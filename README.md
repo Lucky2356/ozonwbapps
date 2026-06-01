@@ -51,34 +51,45 @@ docker compose up --build
 
 Миграции БД применяются автоматически при старте контейнера `api`.
 
-## Локальная разработка (без Docker)
+## Локальная разработка (без сборки Docker-образов) — рекомендуется для быстрой проверки
 
-Нужны Node.js 20+, PostgreSQL и Redis (можно поднять только их через
-`docker compose up postgres redis`).
+Нужны Node.js 20.6+, Docker (только для PostgreSQL и Redis). Этот путь не собирает
+Docker-образы приложения, поэтому не зависит от скачивания зависимостей в контейнерах.
 
 ```bash
 cp .env.example .env
-# Для локального запуска в .env замените хосты на localhost:
-#   DATABASE_URL=postgresql://ozonwb:ozonwb_password@localhost:5432/ozonwb?schema=public
+# В .env для локального запуска укажите localhost. По умолчанию dockerized PostgreSQL
+# проброшен на порт 5433 (чтобы не конфликтовать с локально установленным PostgreSQL):
+#   DATABASE_URL=postgresql://ozonwb:ozonwb_password@localhost:5433/ozonwb?schema=public
 #   REDIS_HOST=localhost
+#   REDIS_URL=redis://localhost:6379
 #   CORS_ORIGIN=http://localhost:5173
 
+# 1. Зависимости
 npm install
 
-# Сгенерировать клиент Prisma, собрать общие пакеты, применить миграции
-npm run -w @ozonwb/db generate
-npm run -w @ozonwb/db build
-npm run build:shared
-npm run -w @ozonwb/db migrate:dev
+# 2. Поднять только БД и очередь
+docker compose up -d postgres redis
 
-# Запуск в трёх терминалах:
+# 3. Клиент Prisma + общие пакеты + миграции (скрипты сами читают .env)
+npm run db:generate
+npm run build:shared
+npm run db:migrate          # применить миграции (или db:migrate:dev для создания новых)
+
+# 4. Для парсинга Ozon — браузер Playwright (один раз)
+npx playwright install chromium
+
+# 5. Запуск в трёх терминалах (api и worker сами подхватывают .env из корня):
 npm run dev:api      # http://localhost:3000
 npm run dev:worker   # слушает очередь
-npm run dev:web      # http://localhost:5173
+npm run dev:web      # http://localhost:5173 — открыть в браузере
 ```
 
-> Для реального парсинга Ozon воркеру нужны браузеры Playwright:
-> `npx playwright install chromium`.
+Откройте <http://localhost:5173>, зарегистрируйтесь и выполните поиск.
+
+> Замечание: живые данные зависят от антибот-защиты маркетплейсов. Wildberries может
+> ограничивать частые запросы (HTTP 429); Ozon защищён сильнее. При блокировке источник
+> возвращает пусто (поиск не падает) — это штатная деградация.
 
 ## Тесты
 

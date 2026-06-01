@@ -13,6 +13,9 @@
     "dev:api": "npm run dev --workspace @ozonwb/api",
     "dev:worker": "npm run dev --workspace @ozonwb/worker",
     "dev:web": "npm run dev --workspace @ozonwb/web",
+    "db:generate": "node --env-file=.env node_modules/prisma/build/index.js generate --schema packages/db/prisma/schema.prisma",
+    "db:migrate": "node --env-file=.env node_modules/prisma/build/index.js migrate deploy --schema packages/db/prisma/schema.prisma",
+    "db:migrate:dev": "node --env-file=.env node_modules/prisma/build/index.js migrate dev --schema packages/db/prisma/schema.prisma",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
