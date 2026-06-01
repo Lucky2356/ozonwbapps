@@ -59,21 +59,42 @@ export class WildberriesAdapter implements MarketplaceAdapter {
         signal: controller.signal,
       });
 
-      if (res.status === 429 && attempt < 1) {
+      if (res.status === 429 && attempt < 2) {
         clearTimeout(timeout);
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
         return this.fetchJson(url, attempt + 1);
       }
       if (!res.ok) {
         logger.warn('WB: непустой статус ответа', { status: res.status });
         return null;
       }
-      return await res.json();
+      // WB иногда отдаёт text/plain или JSON с мусорным хвостом — парсим устойчиво.
+      const text = await res.text();
+      return this.safeParse(text);
     } catch (e) {
       logger.error('WB: ошибка запроса', { error: String(e) });
       return null;
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  /** Толерантный разбор JSON: при мусоре в конце обрезаем до последней закрывающей скобки. */
+  private safeParse(text: string): any {
+    if (!text) return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      const end = text.lastIndexOf('}');
+      if (end > 0) {
+        try {
+          return JSON.parse(text.slice(0, end + 1));
+        } catch {
+          /* ignore */
+        }
+      }
+      logger.warn('WB: не удалось разобрать ответ как JSON');
+      return null;
     }
   }
 

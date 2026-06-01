@@ -36,7 +36,7 @@ describe('WildberriesAdapter', () => {
   it('нормализует товар: цена в рублях, рейтинг, отзывы, продавец, ссылка', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({ ok: true, json: async () => fixture })),
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify(fixture) })),
     );
 
     const offers = await new WildberriesAdapter().search(baseParams);
@@ -57,7 +57,7 @@ describe('WildberriesAdapter', () => {
   it('применяет фильтр по минимальному рейтингу', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({ ok: true, json: async () => fixture })),
+      vi.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify(fixture) })),
     );
     const offers = await new WildberriesAdapter().search({
       ...baseParams,

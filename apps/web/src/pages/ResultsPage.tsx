@@ -10,6 +10,7 @@ import {
 } from '../api/hooks';
 import { ProductCard } from '../components/ProductCard';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
+import { marketplaceColor, marketplaceLabel } from '../lib/format';
 import type { ResultItem } from '../api/types';
 
 export function ResultsPage() {
@@ -101,9 +102,33 @@ export function ResultsPage() {
     );
   }
 
+  // Сводка по источникам: сколько товаров с каждого выбранного маркетплейса.
+  const selected = status.data?.marketplaces ?? [];
+  const counts = new Map<string, number>();
+  for (const it of items) counts.set(it.marketplace, (counts.get(it.marketplace) ?? 0) + 1);
+
   return (
     <>
       {header}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {selected.map((m) => {
+          const n = counts.get(m) ?? 0;
+          return (
+            <span
+              key={m}
+              className={
+                'rounded-full px-3 py-1 text-xs font-medium ' +
+                (n > 0
+                  ? marketplaceColor(m)
+                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500')
+              }
+              title={n > 0 ? `${marketplaceLabel(m)}: ${n} шт.` : `${marketplaceLabel(m)}: нет данных`}
+            >
+              {marketplaceLabel(m)}: {n > 0 ? `${n} шт.` : 'нет данных'}
+            </span>
+          );
+        })}
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {items.map((item) => (
           <ProductCard
