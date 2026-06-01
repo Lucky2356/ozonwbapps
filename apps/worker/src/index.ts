@@ -3,7 +3,7 @@ import { Worker } from 'bullmq';
 import { config } from './config';
 import { logger } from './logger';
 import { processSearch } from './processor';
-import { OzonAdapter } from './adapters/ozon';
+import { closeBrowser } from './adapters/browser';
 
 const QUEUE_NAME = 'search';
 
@@ -33,7 +33,7 @@ logger.info('Воркер запущен и слушает очередь', {
 async function shutdown() {
   logger.info('Остановка воркера...');
   await worker.close();
-  await OzonAdapter.close();
+  await closeBrowser();
   process.exit(0);
 }
 

@@ -1,7 +1,8 @@
-import { chromium, Browser, Page } from 'playwright';
+import { Page } from 'playwright';
 import { MarketplaceOffer, SearchParams } from '@ozonwb/shared';
 import { MarketplaceAdapter } from './types';
 import { applyFilters } from './base';
+import { getBrowser, REALISTIC_UA } from './browser';
 import { config } from '../config';
 import { logger } from '../logger';
 
@@ -16,29 +17,6 @@ import { logger } from '../logger';
  */
 export class OzonAdapter implements MarketplaceAdapter {
   readonly marketplaceName = 'ozon';
-  private static browser: Browser | null = null;
-
-  private async getBrowser(): Promise<Browser> {
-    if (!OzonAdapter.browser) {
-      OzonAdapter.browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-dev-shm-usage',
-        ],
-      });
-    }
-    return OzonAdapter.browser;
-  }
-
-  static async close(): Promise<void> {
-    if (OzonAdapter.browser) {
-      await OzonAdapter.browser.close();
-      OzonAdapter.browser = null;
-    }
-  }
 
   async search(params: SearchParams): Promise<MarketplaceOffer[]> {
     if (!config.ozon.enabled) {
@@ -50,12 +28,11 @@ export class OzonAdapter implements MarketplaceAdapter {
     const composerBodies: string[] = [];
     let context;
     try {
-      const browser = await this.getBrowser();
+      const browser = await getBrowser();
       context = await browser.newContext({
         locale: 'ru-RU',
         viewport: { width: 1366, height: 900 },
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        userAgent: REALISTIC_UA,
       });
       const page = await context.newPage();
 

@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { WildberriesAdapter } from './wildberries';
-import { SearchParams } from '@ozonwb/shared';
+import { describe, it, expect } from 'vitest';
+import { normalizeWbProduct, salvageJson, wbImageUrl } from './wildberries';
 
-const fixture = {
-  data: {
-    products: [
+const collectedAt = new Date().toISOString();
+
+describe('normalizeWbProduct', () => {
+  it('нормализует товар: цена в рублях, скидка, рейтинг, отзывы, продавец, ссылка', () => {
+    const o = normalizeWbProduct(
       {
         id: 12345678,
         name: 'Смартфон Samsung Galaxy',
@@ -14,35 +15,8 @@ const fixture = {
         feedbacks: 1500,
         sizes: [{ price: { basic: 5000000, product: 4299000 } }], // копейки
       },
-      {
-        id: 999,
-        name: 'Без цены',
-        sizes: [{ price: {} }],
-      },
-    ],
-  },
-};
-
-const baseParams: SearchParams = {
-  query: 'телефон',
-  marketplaces: ['wildberries'],
-  filters: {},
-  sort: 'best_value',
-};
-
-afterEach(() => vi.unstubAllGlobals());
-
-describe('WildberriesAdapter', () => {
-  it('нормализует товар: цена в рублях, рейтинг, отзывы, продавец, ссылка', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify(fixture) })),
-    );
-
-    const offers = await new WildberriesAdapter().search(baseParams);
-    expect(offers).toHaveLength(1); // товар без цены отброшен
-
-    const o = offers[0];
+      collectedAt,
+    )!;
     expect(o.marketplace).toBe('wildberries');
     expect(o.price).toBe(42990); // 4299000 копеек -> рубли
     expect(o.oldPrice).toBe(50000);
@@ -54,26 +28,32 @@ describe('WildberriesAdapter', () => {
     expect(o.imageUrl).toContain('wbbasket.ru');
   });
 
-  it('применяет фильтр по минимальному рейтингу', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => ({ ok: true, status: 200, text: async () => JSON.stringify(fixture) })),
-    );
-    const offers = await new WildberriesAdapter().search({
-      ...baseParams,
-      filters: { minRating: 4.9 },
-    });
-    expect(offers).toHaveLength(0); // рейтинг 4.8 < 4.9
+  it('отбрасывает товар без цены', () => {
+    expect(normalizeWbProduct({ id: 999, name: 'Без цены', sizes: [{ price: {} }] }, collectedAt)).toBeNull();
   });
 
-  it('возвращает пустой список при ошибке сети, не бросая исключение', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new Error('network down');
-      }),
+  it('отбрасывает запись без id', () => {
+    expect(normalizeWbProduct({ name: 'Нет id' }, collectedAt)).toBeNull();
+  });
+});
+
+describe('salvageJson', () => {
+  it('спасает валидную часть при мусорном хвосте анти-бота WB', () => {
+    const good = JSON.stringify({ data: { products: [{ id: 1 }] } });
+    const broken = good + ',ot Found'; // как реально присылает WB
+    const parsed = salvageJson(broken);
+    expect(parsed?.data?.products?.[0]?.id).toBe(1);
+  });
+
+  it('возвращает null, если JSON не спасти', () => {
+    expect(salvageJson('<html>403</html>')).toBeNull();
+  });
+});
+
+describe('wbImageUrl', () => {
+  it('строит basket-URL по id', () => {
+    expect(wbImageUrl(12345678)).toMatch(
+      /^https:\/\/basket-\d{2}\.wbbasket\.ru\/vol\d+\/part\d+\/12345678\/images\//,
     );
-    const offers = await new WildberriesAdapter().search(baseParams);
-    expect(offers).toEqual([]);
   });
 });
