@@ -1,0 +1,169 @@
+# Выгодные предложения на маркетплейсах
+
+Веб-приложение: пользователь выбирает маркетплейсы (Ozon, Wildberries), вводит название
+товара и фильтры (рейтинг, отзывы, цена), а приложение ищет предложения, считает их
+**выгодность** (scoring) и показывает топ вариантов с объяснением, почему товар выгоден.
+
+> Данные собираются из **публичных** источников. Wildberries — через открытый JSON-каталог
+> (`search.wb.ru`), Ozon — через Playwright по публичной странице поиска (best-effort).
+> Парсинг вежливый: кеширование, лимиты запросов, мягкая деградация (падение одного
+> источника не ломает остальные). Защита сайтов не обходится, персональные данные не собираются.
+
+## Стек
+
+| Слой        | Технологии                                              |
+|-------------|---------------------------------------------------------|
+| Frontend    | React, TypeScript, Vite, TailwindCSS, React Query, PWA  |
+| Backend API | NestJS, JWT, Prisma                                     |
+| Worker      | BullMQ, Playwright, адаптеры маркетплейсов              |
+| Данные      | PostgreSQL, Redis                                       |
+| Общее       | npm workspaces, общий пакет типов и scoring             |
+
+## Структура (монорепо)
+
+```
+packages/
+  shared/   общие типы (MarketplaceOffer и др.) и scoring-логика
+  db/        Prisma-схема, миграции и клиент БД (используют api и worker)
+apps/
+  api/       REST API (NestJS): auth, search, favorites, tracked, marketplaces
+  worker/    фоновый парсинг + scoring + запись результатов
+  web/       веб-приложение (React)
+```
+
+## Быстрый старт через Docker
+
+Требуется Docker + Docker Compose.
+
+```bash
+# 1. Скопируйте переменные окружения
+cp .env.example .env
+# (в .env поменяйте JWT_SECRET на длинную случайную строку)
+
+# 2. Соберите и запустите всё
+docker compose up --build
+```
+
+После старта:
+
+- Веб-приложение: <http://localhost:8080>
+- API: <http://localhost:3000/api/health>
+
+Миграции БД применяются автоматически при старте контейнера `api`.
+
+## Локальная разработка (без Docker)
+
+Нужны Node.js 20+, PostgreSQL и Redis (можно поднять только их через
+`docker compose up postgres redis`).
+
+```bash
+cp .env.example .env
+# Для локального запуска в .env замените хосты на localhost:
+#   DATABASE_URL=postgresql://ozonwb:ozonwb_password@localhost:5432/ozonwb?schema=public
+#   REDIS_HOST=localhost
+#   CORS_ORIGIN=http://localhost:5173
+
+npm install
+
+# Сгенерировать клиент Prisma, собрать общие пакеты, применить миграции
+npm run -w @ozonwb/db generate
+npm run -w @ozonwb/db build
+npm run build:shared
+npm run -w @ozonwb/db migrate:dev
+
+# Запуск в трёх терминалах:
+npm run dev:api      # http://localhost:3000
+npm run dev:worker   # слушает очередь
+npm run dev:web      # http://localhost:5173
+```
+
+> Для реального парсинга Ozon воркеру нужны браузеры Playwright:
+> `npx playwright install chromium`.
+
+## Тесты
+
+```bash
+npm test                         # все воркспейсы
+npm test -w @ozonwb/shared       # scoring
+npm test -w @ozonwb/worker       # нормализация Wildberries
+npm test -w @ozonwb/api          # auth
+```
+
+## Как работает поиск
+
+1. `POST /api/search` создаёт задачу (статус `processing`) и кладёт job в очередь BullMQ.
+2. **Worker** берёт задачу, запускает адаптеры выбранных маркетплейсов параллельно
+   (с кешем и rate-limit), нормализует данные в единый формат, убирает дубли,
+   считает scoring и сохраняет результаты.
+3. Фронтенд опрашивает `GET /api/search/{id}` до статуса `completed`, затем
+   загружает `GET /api/search/{id}/results`.
+
+### Scoring (выгодность)
+
+Балл 0–100 = взвешенная сумма факторов (веса в `packages/shared/src/scoring.config.ts`,
+переопределяются переменными `SCORE_WEIGHT_*`):
+
+```
+score = priceScore*0.4 + ratingScore*0.25 + reviewsScore*0.15 + discountScore*0.1 + sellerScore*0.1
+```
+
+- цена относительно средней по выборке;
+- рейтинг товара; количество отзывов (лог-шкала);
+- размер скидки; рейтинг продавца;
+- **подозрительно низкая цена** и **отсутствие отзывов** снижают доверие.
+
+Каждая карточка показывает причины: «Цена ниже средней на 12%», «Рейтинг 4.8»,
+«Более 1500 отзывов» и т.д.
+
+## API (основное)
+
+```
+POST   /api/auth/register      { email, password }
+POST   /api/auth/login         { email, password }
+GET    /api/auth/me
+
+GET    /api/marketplaces
+POST   /api/search             { query, marketplaces[], filters, sort }
+GET    /api/search/:id
+GET    /api/search/:id/results
+GET    /api/search/history
+
+POST   /api/favorites
+GET    /api/favorites
+DELETE /api/favorites/:id
+
+POST   /api/tracked-products
+GET    /api/tracked-products
+DELETE /api/tracked-products/:id
+```
+
+Все маршруты, кроме `auth/*` и `marketplaces`, требуют заголовок `Authorization: Bearer <token>`.
+
+## Добавление нового маркетплейса
+
+1. Создайте адаптер `apps/worker/src/adapters/<name>.ts`, реализующий интерфейс
+   `MarketplaceAdapter` (метод `search`, возвращающий `MarketplaceOffer[]`).
+2. Зарегистрируйте его в `apps/worker/src/adapters/registry.ts`.
+3. Добавьте запись в каталог `apps/api/src/marketplaces/marketplaces.controller.ts`.
+4. Включите id в `ENABLED_MARKETPLACES`.
+
+Остальной код (API, очередь, scoring, фронтенд) менять не нужно.
+
+## Что готово (MVP)
+
+- Регистрация/вход (JWT), защищённые маршруты.
+- Поиск с выбором маркетплейсов и фильтрами (рейтинг, отзывы, цена), сортировки.
+- Реальные данные Wildberries; Ozon best-effort через Playwright.
+- Scoring выгодности с объяснениями, топ-предложения.
+- История поисков, избранное, отслеживаемые товары (+ заглушка графика цен).
+- Адаптивный UI, тёмная/светлая тема, PWA-манифест.
+- Docker Compose для запуска всего стека.
+
+## Что дальше (после MVP)
+
+- Реальное наполнение истории цен и уведомления о снижении (cron-пересбор).
+- Telegram-бот (новый app, использует тот же REST API).
+- Упаковка в Android (Capacitor) и Windows (Tauri) из веб-сборки.
+- Яндекс Маркет, DNS, М.Видео — новыми адаптерами.
+- Экспериментальный парсинг по ссылке на категорию.
+```

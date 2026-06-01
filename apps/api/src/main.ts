@@ -1,0 +1,29 @@
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.setGlobalPrefix('api');
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
+
+  const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+  app.enableCors({
+    origin: corsOrigin.split(',').map((s) => s.trim()),
+    credentials: true,
+  });
+
+  const port = Number(process.env.API_PORT ?? 3000);
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`API запущен на порту ${port}`, 'Bootstrap');
+}
+
+bootstrap();

@@ -1,0 +1,27 @@
+{
+  "name": "@ozonwb/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Фоновый воркер: парсинг маркетплейсов, scoring, запись результатов",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ozonwb/db": "*",
+    "@ozonwb/shared": "*",
+    "bottleneck": "^2.19.5",
+    "bullmq": "^5.34.5",
+    "ioredis": "^5.4.2",
+    "playwright": "^1.49.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

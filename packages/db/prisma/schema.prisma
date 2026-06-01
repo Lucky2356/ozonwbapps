@@ -1,0 +1,120 @@
+// Prisma-схема БД проекта ozonwbapps (PostgreSQL).
+// Единый источник истины для api и worker.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  searches        Search[]
+  favorites       Favorite[]
+  trackedProducts TrackedProduct[]
+}
+
+model Search {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query        String
+  marketplaces String[]
+  filters      Json
+  sort         String    @default("best_value")
+  status       String    @default("processing") // processing | completed | failed
+  error        String?
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  offers Offer[]
+
+  @@index([userId, createdAt])
+}
+
+model Offer {
+  id              String   @id @default(cuid())
+  searchId        String
+  search          Search   @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  marketplace     String
+  externalId      String
+  title           String
+  price           Float
+  oldPrice        Float?
+  discountPercent Float?
+  rating          Float?
+  reviewsCount    Int?
+  sellerName      String?
+  sellerRating    Float?
+  imageUrl        String?
+  productUrl      String
+  availability    Boolean  @default(true)
+  deliveryInfo    String?
+  score           Int      @default(0)
+  scoreReasons    String[]
+  collectedAt     DateTime @default(now())
+
+  @@index([searchId, score])
+}
+
+model Favorite {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketplace  String
+  title        String
+  price        Float
+  oldPrice     Float?
+  rating       Float?
+  reviewsCount Int?
+  imageUrl     String?
+  productUrl   String
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, productUrl])
+  @@index([userId])
+}
+
+model TrackedProduct {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketplace String
+  title       String
+  productUrl  String
+  targetPrice Float?
+  lastPrice   Float?
+  createdAt   DateTime @default(now())
+
+  priceHistory PriceHistory[]
+
+  @@unique([userId, productUrl])
+  @@index([userId])
+}
+
+model PriceHistory {
+  id               String         @id @default(cuid())
+  trackedProductId String
+  trackedProduct   TrackedProduct @relation(fields: [trackedProductId], references: [id], onDelete: Cascade)
+  price            Float
+  recordedAt       DateTime       @default(now())
+
+  @@index([trackedProductId, recordedAt])
+}
+
+model ParserLog {
+  id          String   @id @default(cuid())
+  marketplace String
+  searchId    String?
+  level       String   @default("info") // info | warn | error
+  message     String
+  createdAt   DateTime @default(now())
+
+  @@index([marketplace, createdAt])
+}

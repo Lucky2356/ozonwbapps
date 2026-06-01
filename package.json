@@ -1,0 +1,30 @@
+{
+  "name": "ozonwbapps",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Поиск выгодных предложений на маркетплейсах (Ozon, Wildberries и др.)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace @ozonwb/shared",
+    "build": "npm run build:shared && npm run build --workspace @ozonwb/api && npm run build --workspace @ozonwb/worker && npm run build --workspace @ozonwb/web",
+    "dev:api": "npm run dev --workspace @ozonwb/api",
+    "dev:worker": "npm run dev --workspace @ozonwb/worker",
+    "dev:web": "npm run dev --workspace @ozonwb/web",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
