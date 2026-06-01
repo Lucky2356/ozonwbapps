@@ -10,7 +10,9 @@ import { JwtStrategy } from './jwt.strategy';
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'change_me',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' },
+      // expiresIn принимает строку формата ms ('7d', '15m') или число секунд.
+      // @nestjs/jwt 11 типизирует это строго, а из env приходит string — приводим тип.
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as `${number}${'d' | 'h' | 'm' | 's'}` },
     }),
   ],
   controllers: [AuthController],

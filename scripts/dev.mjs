@@ -13,8 +13,9 @@
  * PostgreSQL и Redis (контейнеры) остаются запущенными — данные сохраняются.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
+import net from 'node:net';
 
 const root = process.cwd();
 const isWin = process.platform === 'win32';
@@ -31,10 +32,45 @@ function run(cmd, args) {
   }
 }
 
+/** Запуск, не прерывающий весь старт при ошибке. Возвращает true при успехе. */
+function runTolerant(cmd, args) {
+  const r = spawnSync(cmd, args, { stdio: 'inherit', shell: isWin, cwd: root });
+  return r.status === 0;
+}
+
 /** Тихий запуск, возвращает {status, stdout}. */
 function runQuiet(cmd, args) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', shell: isWin, cwd: root });
   return { status: r.status, stdout: (r.stdout || '').trim() };
+}
+
+/** Проверка, занят ли TCP-порт (значит проект, скорее всего, уже запущен). */
+function portInUse(port) {
+  return new Promise((res) => {
+    const s = net.connect({ port, host: '127.0.0.1' });
+    const done = (v) => {
+      s.destroy();
+      res(v);
+    };
+    s.on('connect', () => done(true));
+    s.on('error', () => res(false));
+    setTimeout(() => done(false), 800);
+  });
+}
+
+/** Удаляет застрявшие временные файлы движка Prisma (после прерванной генерации). */
+function cleanPrismaTmp() {
+  const dir = resolve(root, 'node_modules', '.prisma', 'client');
+  if (!existsSync(dir)) return;
+  for (const f of readdirSync(dir)) {
+    if (f.includes('.tmp')) {
+      try {
+        unlinkSync(resolve(dir, f));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 }
 
 async function ensureEnv() {
@@ -73,8 +109,18 @@ async function startInfra() {
 }
 
 function prepare() {
-  log('Генерирую Prisma-клиент…');
-  run('npm', ['run', 'db:generate']);
+  // Клиент Prisma регенерируем только если его ещё нет: иначе на Windows возможен
+  // EPERM при замене .dll движка, занятого уже запущенным процессом.
+  const clientReady = existsSync(resolve(root, 'node_modules', '.prisma', 'client', 'index.js'));
+  if (clientReady) {
+    log('Prisma-клиент уже сгенерирован — пропускаю db:generate');
+  } else {
+    cleanPrismaTmp();
+    log('Генерирую Prisma-клиент…');
+    if (!runTolerant('npm', ['run', 'db:generate'])) {
+      log(`${C.yellow}db:generate не удался. Если проект уже запущен — остановите его и повторите${C.reset}`);
+    }
+  }
   log('Собираю общий пакет (shared)…');
   run('npm', ['run', 'build:shared']);
   log('Применяю миграции БД…');
@@ -129,6 +175,14 @@ function startServers() {
 }
 
 async function main() {
+  // Защита от повторного запуска: если порт 3000 занят — проект уже работает.
+  if (await portInUse(3000)) {
+    console.error(
+      `${C.red}[dev] Порт 3000 занят — похоже, проект уже запущен.${C.reset}\n` +
+        `       Остановите предыдущий запуск (Ctrl+C в его окне) и повторите ${C.cyan}npm start${C.reset}.`,
+    );
+    process.exit(1);
+  }
   await ensureEnv();
   ensureDeps();
   await startInfra();

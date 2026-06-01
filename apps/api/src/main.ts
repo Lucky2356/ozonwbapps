@@ -1,10 +1,13 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Адаптер передаём явно: это надёжнее авто-загрузки ядром (которая ломается,
+  // если платформа размещена не там, где @nestjs/core в монорепо-hoisting).
+  const app = await NestFactory.create(AppModule, new ExpressAdapter());
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
