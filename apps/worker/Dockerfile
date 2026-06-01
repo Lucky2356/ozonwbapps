@@ -9,7 +9,12 @@ COPY packages/db/package.json ./packages/db/
 COPY apps/api/package.json ./apps/api/
 COPY apps/worker/package.json ./apps/worker/
 COPY apps/web/package.json ./apps/web/
-RUN npm ci
+# Устойчивость к нестабильной сети: увеличенные таймауты и повторные попытки.
+RUN npm config set fetch-retries 5 \
+  && npm config set fetch-retry-mintimeout 20000 \
+  && npm config set fetch-retry-maxtimeout 180000 \
+  && npm config set fetch-timeout 600000 \
+  && for i in 1 2 3 4 5; do npm ci --no-audit --no-fund && break || (echo "npm ci retry $i" && sleep 10); done
 
 COPY packages/shared ./packages/shared
 COPY packages/db ./packages/db

@@ -1,3 +1,4 @@
+import './env'; // должен идти первым — загружает .env до чтения config
 import { Worker } from 'bullmq';
 import { config } from './config';
 import { logger } from './logger';

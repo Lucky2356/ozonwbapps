@@ -11,7 +11,9 @@ import { HealthController } from './health.controller';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // envFilePath ищет .env в текущей папке и в корне монорепо (для `npm run dev:api`).
+    // В Docker переменные приходят из compose — отсутствие .env не мешает.
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../../.env'] }),
     PrismaModule,
     QueueModule,
     AuthModule,
