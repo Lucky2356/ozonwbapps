@@ -36,9 +36,11 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      # Переопределяем сетевые адреса для контейнеров (в .env они указывают на localhost).
       DATABASE_URL: postgresql://${POSTGRES_USER:-ozonwb}:${POSTGRES_PASSWORD:-ozonwb_password}@postgres:5432/${POSTGRES_DB:-ozonwb}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: '6379'
+      REDIS_URL: redis://redis:6379
     ports:
       - '3000:3000'
     depends_on:
@@ -54,9 +56,11 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      # Переопределяем сетевые адреса для контейнеров (в .env они указывают на localhost).
       DATABASE_URL: postgresql://${POSTGRES_USER:-ozonwb}:${POSTGRES_PASSWORD:-ozonwb_password}@postgres:5432/${POSTGRES_DB:-ozonwb}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: '6379'
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy

@@ -8,6 +8,8 @@
     "apps/*"
   ],
   "scripts": {
+    "start": "node scripts/dev.mjs",
+    "stop": "docker compose stop",
     "build:shared": "npm run build --workspace @ozonwb/shared",
     "build": "npm run build:shared && npm run build --workspace @ozonwb/api && npm run build --workspace @ozonwb/worker && npm run build --workspace @ozonwb/web",
     "dev:api": "npm run dev --workspace @ozonwb/api",

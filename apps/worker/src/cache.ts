@@ -4,7 +4,17 @@ import { MarketplaceOffer } from '@ozonwb/shared';
 import { config } from './config';
 import { logger } from './logger';
 
-const redis = new Redis({ host: config.redis.host, port: config.redis.port, maxRetriesPerRequest: null });
+const redis = new Redis({
+  host: config.redis.host,
+  port: config.redis.port,
+  maxRetriesPerRequest: null,
+  // Не «ронять» процесс при кратковременной недоступности Redis.
+  enableOfflineQueue: true,
+  retryStrategy: (times) => Math.min(times * 500, 5000),
+});
+
+// Без этого обработчика ioredis печатает "Unhandled error event" при недоступности Redis.
+redis.on('error', (e) => logger.warn('Redis: ошибка соединения', { error: String(e) }));
 
 function key(marketplace: string, query: string): string {
   return `parser:${marketplace}:${query.trim().toLowerCase()}`;
