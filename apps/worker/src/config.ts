@@ -20,6 +20,9 @@ export const config = {
   wb: {
     dest: process.env.WB_DEST ?? '-1257786',
     searchVersion: process.env.WB_SEARCH_VERSION ?? 'v13',
+    // WB отдаёт товары только обычному браузеру; headless он детектит. По умолчанию headed.
+    // На сервере без дисплея используйте xvfb-run, либо WB_HEADLESS=1 (WB тогда вернёт пусто).
+    headless: process.env.WB_HEADLESS === '1',
   },
   ozon: {
     enabled: (process.env.OZON_ENABLED ?? 'true') === 'true',

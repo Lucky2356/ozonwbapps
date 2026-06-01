@@ -1,15 +1,21 @@
 import { chromium, Browser } from 'playwright';
 
 /**
- * Общий headless-браузер для всех Playwright-адаптеров (Ozon, WB).
- * Один инстанс на процесс воркера; каждый адаптер создаёт свой изолированный context.
+ * Браузеры для Playwright-адаптеров.
+ * - Ozon работает в headless.
+ * - Wildberries отдаёт товары только обычному (не-headless) браузеру — headless он детектит
+ *   и подменяет каталог на preset-заглушку. Поэтому WB запускаем в headed-режиме
+ *   (на сервере без дисплея — через xvfb-run, либо WB_HEADLESS=1 при готовности к деградации).
+ *
+ * Кешируем по ключу headless, чтобы не плодить процессы.
  */
-let browser: Browser | null = null;
+const browsers = new Map<boolean, Browser>();
 
-export async function getBrowser(): Promise<Browser> {
+export async function getBrowser(headless = true): Promise<Browser> {
+  let browser = browsers.get(headless);
   if (!browser) {
     browser = await chromium.launch({
-      headless: true,
+      headless,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -17,15 +23,16 @@ export async function getBrowser(): Promise<Browser> {
         '--disable-dev-shm-usage',
       ],
     });
+    browsers.set(headless, browser);
   }
   return browser;
 }
 
 export async function closeBrowser(): Promise<void> {
-  if (browser) {
-    await browser.close();
-    browser = null;
+  for (const b of browsers.values()) {
+    await b.close().catch(() => undefined);
   }
+  browsers.clear();
 }
 
 export const REALISTIC_UA =

@@ -94,7 +94,8 @@ export class WildberriesAdapter implements MarketplaceAdapter {
     const jsonBodies: string[] = [];
     let context;
     try {
-      const browser = await getBrowser();
+      // ВАЖНО: WB отдаёт товары только обычному (не-headless) браузеру.
+      const browser = await getBrowser(config.wb.headless);
       context = await browser.newContext({
         locale: 'ru-RU',
         viewport: { width: 1366, height: 900 },
@@ -102,52 +103,51 @@ export class WildberriesAdapter implements MarketplaceAdapter {
       });
       const page = await context.newPage();
 
-      // Перехватываем каталожные JSON-ответы WB (в т.ч. preset/catalog), идущие из браузера.
+      // Перехватываем ЛЮБЫЕ ответы *.wb.ru с товарами — именно так сама страница грузит каталог
+      // (ручной fetch к catalog.wb.ru блокируется CORS, а запросы самой страницы проходят).
       page.on('response', async (resp) => {
-        const u = resp.url();
-        if (/wb\.ru\/.*(search|catalog)/.test(u) && resp.request().resourceType() === 'fetch') {
-          try {
-            const t = await resp.text();
-            if (t.includes('"products"')) jsonBodies.push(t);
-          } catch {
-            /* ignore */
-          }
+        if (!/\.wb\.ru\//.test(resp.url())) return;
+        try {
+          const t = await resp.text();
+          if (/"products":\s*\[\s*\{/.test(t)) jsonBodies.push(t);
+        } catch {
+          /* ignore */
         }
       });
 
       await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-      // Ждём появления карточек (признак, что каталог отрисовался).
+      // Ждём появления карточек (признак, что каталог отрисовался) и даём догрузиться.
       const appeared = await page
         .waitForSelector('[data-nm-id], a[href*="/catalog/"][href*="/detail.aspx"]', { timeout: 15000 })
         .then(() => true)
         .catch(() => false);
+      await this.autoScroll(page);
+      await page.waitForTimeout(1500);
 
       const collectedAt = new Date().toISOString();
 
-      // Основной путь: запрашиваем search.wb.ru ИЗ КОНТЕКСТА страницы (с её куками/сессией),
-      // следуя по preset при необходимости. Это даёт релевантные результаты с полными данными.
-      let offers = this.fromJson(await this.fetchInPage(page, params.query), collectedAt);
+      // Основной путь: перехваченные ответы страницы (полные данные — цена/рейтинг/отзывы).
+      let offers = this.fromJson(jsonBodies, collectedAt);
+      let source = 'перехват';
 
-      // Фоллбэк 1: перехваченные браузером JSON-ответы.
-      if (offers.length === 0 && jsonBodies.length > 0) {
-        logger.warn('WB: использую перехваченные JSON-ответы');
-        offers = this.fromJson(jsonBodies, collectedAt);
+      // Фоллбэк 1: запрос search.wb.ru изнутри страницы (+follow по preset).
+      if (offers.length === 0) {
+        offers = this.fromJson(await this.fetchInPage(page, params.query), collectedAt);
+        source = 'fetch-in-page';
       }
-      // Фоллбэк 2: DOM — только из основной сетки результатов поиска (без рекламных
-      // каруселей). На заблокированном IP сетки нет, поэтому вернём пусто, а не мусор.
+      // Фоллбэк 2: DOM из основной сетки результатов (без рекламных каруселей).
       if (offers.length === 0) {
         if (!appeared) logger.warn('WB: каталог не отрисовался (возможна антибот-защита)');
-        else logger.warn('WB: JSON не получен, пробую DOM');
-        await this.autoScroll(page);
         offers = await this.fromDom(page, collectedAt);
+        source = 'dom';
         if (offers.length === 0) {
-          logger.warn('WB: товары не найдены (вероятно, блокировка IP анти-ботом WB)');
+          logger.warn('WB: товары не найдены (headless? тогда задайте WB_HEADLESS=0)');
         }
       }
 
       const limited = offers.slice(0, params.maxItems ?? config.maxItems);
-      logger.info('WB: собрано товаров', { count: limited.length });
+      logger.info('WB: собрано товаров', { count: limited.length, source });
       return applyFilters(limited, params.filters);
     } catch (e) {
       logger.error('WB: ошибка парсинга', { error: String(e) });
