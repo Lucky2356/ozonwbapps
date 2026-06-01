@@ -298,48 +298,97 @@ export class WildberriesAdapter implements MarketplaceAdapter {
   // ------- Запасной разбор DOM -------
 
   private async fromDom(page: Page, collectedAt: string): Promise<MarketplaceOffer[]> {
-    const raw = await page.evaluate(() => {
-      const out: { id: string; title: string; priceText: string; href: string }[] = [];
-      // Берём карточки только из основной сетки результатов, исключая рекламные карусели.
+    // Точные селекторы карточки WB (структура product-card, 2024–2025).
+    const items = await page.evaluate(() => {
+      const out: {
+        id: string;
+        title: string;
+        priceText: string;
+        oldPriceText: string;
+        ratingText: string;
+        reviewsText: string;
+        img: string;
+      }[] = [];
       const grid =
         document.querySelector('.product-card-list') ||
         document.querySelector('[data-tag="catalogGrid"]') ||
         document.querySelector('main') ||
         document;
-      const cards = Array.from(grid.querySelectorAll('[data-nm-id], .product-card'));
+      const cards = Array.from(grid.querySelectorAll('.product-card, article[data-nm-id]'));
       for (const card of cards) {
-        // Пропускаем карточки внутри каруселей рекомендаций/рекламы.
         if (card.closest('[class*="carousel"], [class*="recommend"], [class*="banner"]')) continue;
-        const link = card.querySelector('a[href*="/detail.aspx"]') as HTMLAnchorElement | null;
+        const link = card.querySelector('a.j-card-link, a[href*="/detail.aspx"]') as HTMLAnchorElement | null;
         const href = link?.href || '';
         const nm = card.getAttribute('data-nm-id') || (href.match(/catalog\/(\d+)\//)?.[1] ?? '');
         if (!nm) continue;
-        let title = (
-          card.querySelector('.product-card__name, [class*="name"]')?.textContent || ''
-        )
+
+        // Название: aria-label ссылки — чистое, без внутреннего сепаратора " / ".
+        const nameEl = card.querySelector('.product-card__name');
+        const sep = nameEl?.querySelector('.product-card__name-separator');
+        if (sep) sep.remove();
+        const title = (link?.getAttribute('aria-label') || nameEl?.textContent || '')
           .replace(/\s+/g, ' ')
-          .replace(/^\/+\s*/, '') // убираем мусорный префикс "/"
           .trim();
-        const priceText =
-          (card.querySelector('[class*="price"]')?.textContent || '').replace(/\s+/g, ' ').trim();
-        out.push({ id: nm, title, priceText, href });
+
+        // Цена: текущая (ins.price__lower-price), старая (del).
+        const priceText = (card.querySelector('ins.price__lower-price, .price__lower-price')?.textContent || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const oldPriceText = (card.querySelector('del')?.textContent || '').replace(/\s+/g, ' ').trim();
+
+        // Картинка: data-src-pb (стабильный basket-URL) предпочтительнее src (гео-CDN).
+        const imgEl = card.querySelector('img.j-thumbnail, img') as HTMLImageElement | null;
+        let img = imgEl?.getAttribute('data-src-pb') || imgEl?.getAttribute('src') || '';
+        if (img.startsWith('//')) img = 'https:' + img;
+
+        // Рейтинг: .address-rate-mini = "4,9". Отзывы: .product-card__count = "12 940 оценок".
+        const ratingText = (card.querySelector('.address-rate-mini')?.textContent || '').trim();
+        const reviewsText = (card.querySelector('.product-card__count')?.textContent || '').trim();
+
+        out.push({ id: nm, title, priceText, oldPriceText, ratingText, reviewsText, img });
       }
       return out;
     });
 
-    return raw
+    const parsePrice = (t: string): number | undefined => {
+      const d = (t.match(/\d[\d\s ]*/g) || [])[0]?.replace(/\D/g, '') ?? '';
+      const n = Number(d);
+      return Number.isFinite(n) && n > 0 ? n : undefined;
+    };
+
+    return items
       .map((r): MarketplaceOffer | null => {
         const id = Number(r.id);
         if (!id) return null;
-        const digits = (r.priceText.match(/\d[\d\s ]*/g) || [])[0]?.replace(/\D/g, '') ?? '';
-        const price = Number(digits);
-        if (!Number.isFinite(price) || price <= 0) return null;
+        const price = parsePrice(r.priceText);
+        if (price == null) return null;
+        const oldPrice = parsePrice(r.oldPriceText);
+
+        const rm = r.ratingText.match(/([0-5][.,]\d)/);
+        const rating = rm ? Number(rm[1].replace(',', '.')) : undefined;
+
+        // Отзывы: "12 940 оценок" или "1,2 тыс. оценок".
+        let reviewsCount: number | undefined;
+        const tk = r.reviewsText.match(/([\d.,]+)\s*тыс/i);
+        const mn = r.reviewsText.match(/([\d.,]+)\s*млн/i);
+        if (mn) reviewsCount = Math.round(parseFloat(mn[1].replace(',', '.')) * 1_000_000);
+        else if (tk) reviewsCount = Math.round(parseFloat(tk[1].replace(',', '.')) * 1000);
+        else {
+          const d = (r.reviewsText.match(/\d[\d\s ]*/) || [''])[0].replace(/\D/g, '');
+          reviewsCount = d ? Number(d) : undefined;
+        }
+
         return {
           id: `wildberries:${id}`,
           marketplace: 'wildberries',
           title: (r.title || 'Товар Wildberries').slice(0, 300),
           price,
-          imageUrl: wbImageUrl(id),
+          oldPrice: oldPrice && oldPrice > price ? oldPrice : undefined,
+          discountPercent:
+            oldPrice && oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : undefined,
+          rating,
+          reviewsCount,
+          imageUrl: r.img || wbImageUrl(id),
           productUrl: `https://www.wildberries.ru/catalog/${id}/detail.aspx`,
           availability: true,
           collectedAt,
