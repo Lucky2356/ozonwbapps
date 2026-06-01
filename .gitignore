@@ -34,3 +34,6 @@ playwright-report/
 
 # Vite
 apps/web/dist/
+
+# Временные отладочные файлы
+tmp_*
