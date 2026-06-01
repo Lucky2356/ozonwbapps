@@ -6,25 +6,27 @@ import { getBrowser, REALISTIC_UA } from './browser';
 import { config } from '../config';
 import { logger } from '../logger';
 
+/** Номер basket-хоста WB по vol (актуальные диапазоны на 2024–2025). */
+export function wbBasket(vol: number): string {
+  const ranges: [number, string][] = [
+    [143, '01'], [287, '02'], [431, '03'], [719, '04'], [1007, '05'],
+    [1061, '06'], [1115, '07'], [1169, '08'], [1313, '09'], [1601, '10'],
+    [1655, '11'], [1919, '12'], [2045, '13'], [2189, '14'], [2405, '15'],
+    [2621, '16'], [2861, '17'], [2978, '18'], [3120, '19'], [3263, '20'],
+    [3405, '21'], [3550, '22'], [3700, '23'], [3850, '24'], [4000, '25'],
+    [4160, '26'], [4320, '27'],
+  ];
+  for (const [max, host] of ranges) {
+    if (vol <= max) return host;
+  }
+  return '28';
+}
+
 /** URL картинки товара WB по правилам basket-хостов (экспортируется для тестов). */
 export function wbImageUrl(id: number): string {
   const vol = Math.floor(id / 100000);
   const part = Math.floor(id / 1000);
-  const ranges: [number, string][] = [
-    [143, '01'], [287, '02'], [431, '03'], [719, '04'], [1007, '05'],
-    [1061, '06'], [1115, '07'], [1169, '08'], [1313, '09'], [1601, '10'],
-    [1655, '11'], [1919, '12'], [2045, '13'], [2189, '14'], [2333, '15'],
-    [2477, '16'], [2621, '17'], [2765, '18'], [2909, '19'], [3053, '20'],
-    [3197, '21'], [3341, '22'], [3485, '23'], [3629, '24'],
-  ];
-  let basket = '25';
-  for (const [max, host] of ranges) {
-    if (vol <= max) {
-      basket = host;
-      break;
-    }
-  }
-  return `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${id}/images/c516x688/1.webp`;
+  return `https://basket-${wbBasket(vol)}.wbbasket.ru/vol${vol}/part${part}/${id}/images/big/1.webp`;
 }
 
 /** Нормализация одного товара из JSON WB в MarketplaceOffer (экспортируется для тестов). */
@@ -45,6 +47,12 @@ export function normalizeWbProduct(p: any, collectedAt: string): MarketplaceOffe
     discountPercent = Math.round(((oldPrice - price) / oldPrice) * 100);
   }
 
+  // Поля рейтинга/отзывов в разных версиях WB API называются по-разному — пробуем все.
+  const rating =
+    num(p?.reviewRating) ?? num(p?.nmReviewRating) ?? num(p?.rating) ?? num(p?.reviewRatingDecimal);
+  const reviewsCount = num(p?.feedbacks) ?? num(p?.nmFeedbacks) ?? num(p?.feedbackCount);
+  const totalQty = num(p?.totalQuantity);
+
   return {
     id: `wildberries:${id}`,
     marketplace: 'wildberries',
@@ -52,13 +60,13 @@ export function normalizeWbProduct(p: any, collectedAt: string): MarketplaceOffe
     price,
     oldPrice: oldPrice && oldPrice > price ? oldPrice : undefined,
     discountPercent,
-    rating: num(p?.reviewRating) ?? num(p?.rating),
-    reviewsCount: num(p?.feedbacks),
+    rating,
+    reviewsCount,
     sellerName: typeof p?.supplier === 'string' ? p.supplier : undefined,
     sellerRating: num(p?.supplierRating),
     imageUrl: wbImageUrl(id),
     productUrl: `https://www.wildberries.ru/catalog/${id}/detail.aspx`,
-    availability: true,
+    availability: totalQty == null ? true : totalQty > 0,
     collectedAt,
   };
 }
@@ -88,6 +96,8 @@ export function salvageJson(text: string): any {
  */
 export class WildberriesAdapter implements MarketplaceAdapter {
   readonly marketplaceName = 'wildberries';
+  /** Чтобы залогировать структуру товара лишь один раз за процесс. */
+  private static loggedSample = false;
 
   async search(params: SearchParams): Promise<MarketplaceOffer[]> {
     const pageUrl = `https://www.wildberries.ru/catalog/0/search.aspx?search=${encodeURIComponent(params.query)}`;
@@ -258,6 +268,20 @@ export class WildberriesAdapter implements MarketplaceAdapter {
         if (!json) continue;
       }
       const products: any[] = json?.data?.products ?? json?.products ?? [];
+      // Диагностика: один раз логируем поля первого товара, чтобы видеть реальную структуру WB.
+      if (products[0] && !WildberriesAdapter.loggedSample) {
+        WildberriesAdapter.loggedSample = true;
+        const s = products[0];
+        logger.info('WB: структура товара', {
+          keys: Object.keys(s),
+          reviewRating: s.reviewRating,
+          nmReviewRating: s.nmReviewRating,
+          rating: s.rating,
+          feedbacks: s.feedbacks,
+          nmFeedbacks: s.nmFeedbacks,
+          pics: s.pics,
+        });
+      }
       for (const p of products) {
         const offer = normalizeWbProduct(p, collectedAt);
         if (offer && !byId.has(offer.id)) byId.set(offer.id, offer);

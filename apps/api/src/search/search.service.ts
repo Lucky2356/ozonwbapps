@@ -60,7 +60,7 @@ export class SearchService {
     };
   }
 
-  async getResults(userId: string, searchId: string, limit = 20) {
+  async getResults(userId: string, searchId: string, limit = 100) {
     const search = await this.prisma.search.findFirst({
       where: { id: searchId, userId },
     });

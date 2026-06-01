@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ExternalLink, Heart, Bell, Star } from 'lucide-react';
 import clsx from 'clsx';
 import type { ResultItem } from '../api/types';
@@ -12,18 +13,17 @@ interface Props {
 }
 
 export function ProductCard({ item, isFavorite, onToggleFavorite, onTrack }: Props) {
+  const [imgError, setImgError] = useState(false);
   return (
     <div className="card flex flex-col overflow-hidden">
       <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800">
-        {item.imageUrl ? (
+        {item.imageUrl && !imgError ? (
           <img
             src={item.imageUrl}
             alt={item.title}
             loading="lazy"
             className="h-full w-full object-contain"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
-            }}
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-400">нет фото</div>
