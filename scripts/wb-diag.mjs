@@ -132,33 +132,55 @@ function searchUrl(v, q, d) {
     await hit('3) Поиск v13 с другим dest (123585487)', searchUrl('v13', query, '123585487'));
   }
 
-  // Браузерная проверка (как реальный адаптер): открываем WB в Chromium и запрашиваем
-  // search.wb.ru изнутри страницы — у запроса есть куки/сессия, антибот проходится лучше.
-  console.log('\n=== 4) Браузерная проверка (Playwright) ===');
+  // Браузерная проверка. ВАЖНО: по умолчанию открываем ОБЫЧНЫЙ (не headless) браузер —
+  // WB детектит headless и не отдаёт товары. Окно браузера на ~10 сек откроется и закроется.
+  // Если нужен headless: WB_DIAG_HEADLESS=1 npm run wb:diag
+  const headless = process.env.WB_DIAG_HEADLESS === '1';
+  console.log('\n=== 4) Браузерная проверка (Playwright, headless=' + headless + ') ===');
   try {
     const { chromium } = await import('playwright');
-    const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+    const browser = await chromium.launch({
+      headless,
+      args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'],
+    });
     const ctx = await browser.newContext({ locale: 'ru-RU', userAgent: UA });
     const page = await ctx.newPage();
     const pageUrl = `https://www.wildberries.ru/catalog/0/search.aspx?search=${encodeURIComponent(query)}`;
     await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(6000);
+
+    // 4a. search.wb.ru изнутри браузера + при preset — догрузка по preset с catalog.wb.ru.
     const result = await page.evaluate(async (q) => {
-      const url =
+      const out = {};
+      const su =
         'https://search.wb.ru/exactmatch/ru/common/v13/search?appType=1&curr=rub&dest=-1257786' +
-        '&lang=ru&page=1&query=' +
-        encodeURIComponent(q) +
+        '&lang=ru&page=1&query=' + encodeURIComponent(q) +
         '&resultset=catalog&sort=popular&spp=30&suppressSpellcheck=false';
       try {
-        const r = await fetch(url, { credentials: 'include' });
+        const r = await fetch(su, { credentials: 'include' });
         const t = await r.text();
-        const m = t.match(/"products":\s*\[/);
-        return { status: r.status, len: t.length, hasProducts: !!m, head: t.slice(0, 140) };
-      } catch (e) {
-        return { error: String(e) };
-      }
+        out.search = { status: r.status, len: t.length, hasProducts: /"products":\s*\[\s*\{/.test(t) };
+        const m = t.match(/preset=(\d+)/);
+        if (m) {
+          out.presetId = m[1];
+          const cu =
+            'https://catalog.wb.ru/catalog/preset/v2/catalog?appType=1&curr=rub&dest=-1257786' +
+            '&lang=ru&page=1&preset=' + m[1] + '&sort=popular&spp=30';
+          try {
+            const r2 = await fetch(cu, { credentials: 'include' });
+            const t2 = await r2.text();
+            out.presetCatalog = {
+              status: r2.status,
+              len: t2.length,
+              hasProducts: /"products":\s*\[\s*\{/.test(t2),
+              head: t2.slice(0, 80),
+            };
+          } catch (e) { out.presetCatalog = { error: String(e) }; }
+        }
+      } catch (e) { out.search = { error: String(e) }; }
+      return out;
     }, query);
-    console.log('search.wb.ru изнутри браузера:', JSON.stringify(result));
+    console.log('Результат изнутри браузера:', JSON.stringify(result, null, 2));
     const cards = await page.evaluate(() => document.querySelectorAll('[data-nm-id]').length);
     console.log('Карточек [data-nm-id] на странице:', cards);
     await browser.close();
