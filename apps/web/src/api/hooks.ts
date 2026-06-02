@@ -9,6 +9,7 @@ import type {
   TrackedProduct,
   Notification,
   Profile,
+  TelegramLink,
   SearchFormValues,
 } from './types';
 
@@ -172,5 +173,12 @@ export function useUpdateProfile() {
     mutationFn: async (payload: { telegramChatId?: string | null }) =>
       (await api.patch<Profile>('/profile', payload)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
+  });
+}
+
+/** Создаёт одноразовый код привязки Telegram и deep-link на бота. */
+export function useCreateTelegramLink() {
+  return useMutation({
+    mutationFn: async () => (await api.post<TelegramLink>('/profile/telegram/link-code')).data,
   });
 }

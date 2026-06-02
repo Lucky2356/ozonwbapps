@@ -5,6 +5,7 @@ import { logger } from './logger';
 import { processSearch } from './processor';
 import { closeBrowser } from './adapters/browser';
 import { checkAllTrackedPrices } from './pricecheck';
+import { startTelegramBot, stopTelegramBot } from './telegrambot';
 
 const QUEUE_NAME = 'search';
 
@@ -50,9 +51,13 @@ function schedulePriceChecks() {
 }
 schedulePriceChecks();
 
+// --- Telegram-бот (привязка аккаунта + команды) ---
+startTelegramBot();
+
 async function shutdown() {
   logger.info('Остановка воркера...');
   if (priceCheckTimer) clearInterval(priceCheckTimer);
+  stopTelegramBot();
   await worker.close();
   await closeBrowser();
   process.exit(0);

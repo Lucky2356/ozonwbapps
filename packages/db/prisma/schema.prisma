@@ -15,6 +15,8 @@ model User {
   passwordHash String
   /** Chat ID Telegram для уведомлений (если пользователь подключил бота). */
   telegramChatId String?
+  /** Одноразовый код привязки Telegram (для команды /start <код> в боте). */
+  telegramLinkCode String? @unique
   createdAt    DateTime @default(now())
 
   searches        Search[]

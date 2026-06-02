@@ -87,6 +87,14 @@ export interface Profile {
   id: string;
   email: string;
   telegramChatId?: string | null;
+  telegramConfigured?: boolean;
+}
+
+export interface TelegramLink {
+  enabled: boolean;
+  code?: string;
+  botUsername?: string | null;
+  deepLink?: string | null;
 }
 
 export interface SearchFormValues {
