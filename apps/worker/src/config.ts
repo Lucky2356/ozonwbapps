@@ -28,6 +28,12 @@ export const config = {
     enabled: (process.env.OZON_ENABLED ?? 'true') === 'true',
     timeoutMs: Number(process.env.OZON_TIMEOUT_MS ?? 30000),
   },
+  yandex: {
+    // У Яндекс.Маркета сильная капча; в headless она срабатывает чаще. По умолчанию headless,
+    // на «чистом» RU-IP можно перевести в headed (YM_HEADLESS=0) для большей надёжности.
+    headless: process.env.YM_HEADLESS !== '0',
+    timeoutMs: Number(process.env.YM_TIMEOUT_MS ?? 30000),
+  },
   scoreWeights: {
     SCORE_WEIGHT_PRICE: process.env.SCORE_WEIGHT_PRICE,
     SCORE_WEIGHT_RATING: process.env.SCORE_WEIGHT_RATING,

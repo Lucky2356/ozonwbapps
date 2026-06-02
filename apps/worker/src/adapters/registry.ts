@@ -1,13 +1,18 @@
 import { MarketplaceAdapter } from './types';
 import { WildberriesAdapter } from './wildberries';
 import { OzonAdapter } from './ozon';
+import { YandexMarketAdapter } from './yandexmarket';
 import { config } from '../config';
 
 /**
  * Реестр адаптеров. Чтобы добавить маркетплейс — создайте новый класс-адаптер
  * и зарегистрируйте его здесь. Остальной код менять не нужно.
  */
-const ALL: MarketplaceAdapter[] = [new WildberriesAdapter(), new OzonAdapter()];
+const ALL: MarketplaceAdapter[] = [
+  new WildberriesAdapter(),
+  new OzonAdapter(),
+  new YandexMarketAdapter(),
+];
 
 const byName = new Map<string, MarketplaceAdapter>(ALL.map((a) => [a.marketplaceName, a]));
 

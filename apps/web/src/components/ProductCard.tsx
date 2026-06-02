@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ExternalLink, Heart, Bell, Star } from 'lucide-react';
 import clsx from 'clsx';
 import type { ResultItem } from '../api/types';
 import { ScoreBadge } from './ScoreBadge';
-import { formatPrice, marketplaceColor, marketplaceLabel } from '../lib/format';
+import { buildImageCandidates, formatPrice, marketplaceColor, marketplaceLabel } from '../lib/format';
 
 interface Props {
   item: ResultItem;
@@ -13,17 +13,20 @@ interface Props {
 }
 
 export function ProductCard({ item, isFavorite, onToggleFavorite, onTrack }: Props) {
-  const [imgError, setImgError] = useState(false);
+  // Кандидаты-URL картинки (для WB — перебор basket-хостов при ошибке загрузки).
+  const candidates = useMemo(() => buildImageCandidates(item.imageUrl), [item.imageUrl]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const currentSrc = candidates[candidateIndex];
   return (
     <div className="card flex flex-col overflow-hidden">
       <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800">
-        {item.imageUrl && !imgError ? (
+        {currentSrc ? (
           <img
-            src={item.imageUrl}
+            src={currentSrc}
             alt={item.title}
             loading="lazy"
             className="h-full w-full object-contain"
-            onError={() => setImgError(true)}
+            onError={() => setCandidateIndex((i) => i + 1)}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-400">нет фото</div>
