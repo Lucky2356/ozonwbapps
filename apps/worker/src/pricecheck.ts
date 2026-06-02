@@ -50,19 +50,27 @@ export async function checkAllTrackedPrices(): Promise<void> {
 }
 
 /**
- * Решает, нужно ли уведомление, и создаёт его.
+ * Чистое решение, нужно ли уведомление (вынесено для юнит-тестов).
  * - Есть целевая цена: уведомляем при ПЕРВОМ достижении (пересечении) цели сверху вниз.
  * - Целевой цены нет: уведомляем при снижении цены минимум на 1% относительно прошлой.
  */
+export function decideNotification(
+  prev: number | null,
+  price: number,
+  target: number | null,
+): 'target_reached' | 'price_drop' | null {
+  if (target != null) {
+    if (price <= target && (prev == null || prev > target)) return 'target_reached';
+    return null;
+  }
+  if (prev != null && price < prev * 0.99) return 'price_drop';
+  return null;
+}
+
+/** Решает, нужно ли уведомление, и создаёт его (в приложении + в Telegram). */
 async function maybeNotify(tp: TrackedWithUser, prev: number | null, price: number): Promise<void> {
   const target = tp.targetPrice ?? null;
-
-  let type: 'target_reached' | 'price_drop' | null = null;
-  if (target != null) {
-    if (price <= target && (prev == null || prev > target)) type = 'target_reached';
-  } else if (prev != null && price < prev * 0.99) {
-    type = 'price_drop';
-  }
+  const type = decideNotification(prev, price, target);
   if (!type) return;
 
   const title = type === 'target_reached' ? 'Цель по цене достигнута' : 'Цена снизилась';

@@ -44,6 +44,12 @@ export const config = {
     headless: process.env.YM_HEADLESS !== '0',
     timeoutMs: Number(process.env.YM_TIMEOUT_MS ?? 30000),
   },
+  dns: {
+    // У DNS сильная анти-бот-защита (DDoS-Guard). По умолчанию headless; на «чистом» RU-IP
+    // надёжнее headed (DNS_HEADLESS=0).
+    headless: process.env.DNS_HEADLESS !== '0',
+    timeoutMs: Number(process.env.DNS_TIMEOUT_MS ?? 30000),
+  },
   scoreWeights: {
     SCORE_WEIGHT_PRICE: process.env.SCORE_WEIGHT_PRICE,
     SCORE_WEIGHT_RATING: process.env.SCORE_WEIGHT_RATING,

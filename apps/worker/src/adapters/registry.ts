@@ -2,6 +2,7 @@ import { MarketplaceAdapter } from './types';
 import { WildberriesAdapter } from './wildberries';
 import { OzonAdapter } from './ozon';
 import { YandexMarketAdapter } from './yandexmarket';
+import { DnsAdapter } from './dns';
 import { config } from '../config';
 
 /**
@@ -12,6 +13,7 @@ const ALL: MarketplaceAdapter[] = [
   new WildberriesAdapter(),
   new OzonAdapter(),
   new YandexMarketAdapter(),
+  new DnsAdapter(),
 ];
 
 const byName = new Map<string, MarketplaceAdapter>(ALL.map((a) => [a.marketplaceName, a]));
