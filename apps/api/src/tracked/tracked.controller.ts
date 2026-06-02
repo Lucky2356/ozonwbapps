@@ -19,6 +19,11 @@ export class TrackedController {
     return this.tracked.list(user.id);
   }
 
+  @Post(':id/check')
+  check(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.tracked.requestCheck(user.id, id);
+  }
+
   @Delete(':id')
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.tracked.remove(user.id, id);

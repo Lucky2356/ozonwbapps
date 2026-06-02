@@ -13,9 +13,44 @@ function loadTracked() {
 const fmt = (n: number) => n.toLocaleString('ru-RU');
 
 /**
- * Пересбор цен всех отслеживаемых товаров: для каждого получает текущую цену через адаптер,
- * дописывает точку в историю цен, обновляет lastPrice и при необходимости создаёт уведомление
- * (в приложении + в Telegram). Изолирует ошибки по каждому товару — один сбой не ломает остальные.
+ * Проверяет цену ОДНОГО отслеживаемого товара: получает текущую цену через адаптер,
+ * дописывает точку в историю, обновляет lastPrice и при необходимости создаёт уведомление.
+ * Возвращает true, если цену удалось получить и записать. Ошибки изолированы (не бросает).
+ */
+export async function checkTrackedPrice(tp: TrackedWithUser): Promise<boolean> {
+  const adapter = resolveAdapters([tp.marketplace])[0];
+  if (!adapter?.fetchProductPrice) return false; // маркетплейс выключен или не умеет отдавать цену
+
+  let price: number | null = null;
+  try {
+    price = await getLimiter(tp.marketplace).schedule(() => adapter.fetchProductPrice!(tp.productUrl));
+  } catch (e) {
+    logger.warn('Трекинг цен: ошибка получения цены', { id: tp.id, error: String(e) });
+  }
+  if (price == null) return false;
+
+  const prev = tp.lastPrice;
+  await prisma.priceHistory.create({ data: { trackedProductId: tp.id, price } });
+  await prisma.trackedProduct.update({ where: { id: tp.id }, data: { lastPrice: price } });
+  await maybeNotify(tp, prev, price);
+  return true;
+}
+
+/** Проверяет цену одного товара по его id (для очереди разовой проверки из API). */
+export async function checkTrackedPriceById(trackedProductId: string): Promise<boolean> {
+  const tp = await prisma.trackedProduct.findUnique({
+    where: { id: trackedProductId },
+    include: { user: true },
+  });
+  if (!tp) {
+    logger.warn('Трекинг цен: товар не найден', { trackedProductId });
+    return false;
+  }
+  return checkTrackedPrice(tp);
+}
+
+/**
+ * Пересбор цен ВСЕХ отслеживаемых товаров (для cron). Один сбой не ломает остальные.
  */
 export async function checkAllTrackedPrices(): Promise<void> {
   const tracked = await loadTracked();
@@ -27,23 +62,7 @@ export async function checkAllTrackedPrices(): Promise<void> {
 
   let checked = 0;
   for (const tp of tracked) {
-    const adapter = resolveAdapters([tp.marketplace])[0];
-    if (!adapter?.fetchProductPrice) continue; // маркетплейс выключен или не умеет отдавать цену
-
-    let price: number | null = null;
-    try {
-      price = await getLimiter(tp.marketplace).schedule(() => adapter.fetchProductPrice!(tp.productUrl));
-    } catch (e) {
-      logger.warn('Трекинг цен: ошибка получения цены', { id: tp.id, error: String(e) });
-    }
-    if (price == null) continue;
-
-    const prev = tp.lastPrice;
-    await prisma.priceHistory.create({ data: { trackedProductId: tp.id, price } });
-    await prisma.trackedProduct.update({ where: { id: tp.id }, data: { lastPrice: price } });
-    checked++;
-
-    await maybeNotify(tp, prev, price);
+    if (await checkTrackedPrice(tp)) checked++;
   }
 
   logger.info('Трекинг цен: проверка завершена', { checked, total: tracked.length });

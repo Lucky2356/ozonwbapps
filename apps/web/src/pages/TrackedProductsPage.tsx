@@ -1,5 +1,6 @@
-import { ExternalLink, Trash2 } from 'lucide-react';
-import { useTracked, useRemoveTracked } from '../api/hooks';
+import { ExternalLink, Trash2, RefreshCw } from 'lucide-react';
+import clsx from 'clsx';
+import { useTracked, useRemoveTracked, useCheckTracked } from '../api/hooks';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
 import { PriceHistoryChart } from '../components/PriceHistoryChart';
 import { formatPrice, marketplaceLabel } from '../lib/format';
@@ -7,6 +8,7 @@ import { formatPrice, marketplaceLabel } from '../lib/format';
 export function TrackedProductsPage() {
   const { data, isLoading, isError } = useTracked();
   const remove = useRemoveTracked();
+  const check = useCheckTracked();
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
@@ -18,6 +20,11 @@ export function TrackedProductsPage() {
   return (
     <div className="space-y-3">
       <h1 className="text-xl font-bold">Отслеживание цен</h1>
+      <p className="text-sm text-slate-500">
+        Цены проверяются автоматически по расписанию. Кнопка{' '}
+        <RefreshCw className="inline h-3.5 w-3.5" /> запускает проверку сейчас — новая цена появится
+        через несколько секунд.
+      </p>
       {data.map((t) => (
         <div key={t.id} className="card p-4">
           <div className="flex items-start justify-between gap-3">
@@ -30,6 +37,19 @@ export function TrackedProductsPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <button
+                onClick={() => check.mutate(t.id)}
+                disabled={check.isPending && check.variables === t.id}
+                className="btn-ghost px-2.5"
+                title="Проверить цену сейчас"
+              >
+                <RefreshCw
+                  className={clsx(
+                    'h-4 w-4',
+                    check.isPending && check.variables === t.id && 'animate-spin',
+                  )}
+                />
+              </button>
               <a href={t.productUrl} target="_blank" rel="noreferrer" className="btn-ghost px-2.5">
                 <ExternalLink className="h-4 w-4" />
               </a>

@@ -159,12 +159,15 @@ DELETE /api/favorites/:id
 
 POST   /api/tracked-products
 GET    /api/tracked-products
+POST   /api/tracked-products/:id/check     # разовая проверка цены сейчас
 DELETE /api/tracked-products/:id
 
 GET    /api/notifications
 GET    /api/notifications/unread-count
 POST   /api/notifications/:id/read
 POST   /api/notifications/read-all
+DELETE /api/notifications/:id
+DELETE /api/notifications/clear
 
 GET    /api/profile
 PATCH  /api/profile               { telegramChatId }
@@ -178,7 +181,8 @@ POST   /api/profile/telegram/link-code
 - Нажмите колокольчик у товара, чтобы отслеживать его цену (можно задать целевую цену).
 - Worker по расписанию (`PRICE_CHECK_INTERVAL_MIN`, по умолчанию каждые 6 ч) заново
   снимает цены отслеживаемых товаров, дописывает историю цен (график на странице
-  «Отслеживание») и обновляет текущую цену.
+  «Отслеживание») и обновляет текущую цену. Кнопка «Проверить сейчас» у товара
+  ставит разовую проверку в очередь без ожидания расписания.
 - При снижении цены или достижении цели создаётся **уведомление** в приложении
   (страница «Уведомления» с бейджем непрочитанных).
 

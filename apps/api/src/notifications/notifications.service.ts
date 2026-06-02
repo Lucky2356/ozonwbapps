@@ -32,4 +32,16 @@ export class NotificationsService {
     });
     return { ok: true };
   }
+
+  async remove(userId: string, id: string) {
+    const n = await this.prisma.notification.findFirst({ where: { id, userId } });
+    if (!n) throw new NotFoundException('Уведомление не найдено');
+    await this.prisma.notification.delete({ where: { id } });
+    return { ok: true };
+  }
+
+  async clearAll(userId: string) {
+    await this.prisma.notification.deleteMany({ where: { userId } });
+    return { ok: true };
+  }
 }

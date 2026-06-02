@@ -3,6 +3,8 @@ import { Queue } from 'bullmq';
 
 export const SEARCH_QUEUE = 'SEARCH_QUEUE';
 export const SEARCH_QUEUE_NAME = 'search';
+export const PRICE_CHECK_QUEUE = 'PRICE_CHECK_QUEUE';
+export const PRICE_CHECK_QUEUE_NAME = 'price-check';
 
 function buildConnection() {
   // BullMQ принимает либо URL, либо host/port. Поддерживаем оба варианта.
@@ -34,7 +36,19 @@ function buildConnection() {
           },
         }),
     },
+    {
+      provide: PRICE_CHECK_QUEUE,
+      useFactory: () =>
+        new Queue(PRICE_CHECK_QUEUE_NAME, {
+          connection: buildConnection(),
+          defaultJobOptions: {
+            attempts: 1,
+            removeOnComplete: 100,
+            removeOnFail: 200,
+          },
+        }),
+    },
   ],
-  exports: [SEARCH_QUEUE],
+  exports: [SEARCH_QUEUE, PRICE_CHECK_QUEUE],
 })
 export class QueueModule {}

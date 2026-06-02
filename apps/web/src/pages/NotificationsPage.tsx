@@ -1,9 +1,11 @@
-import { ExternalLink, BellOff, CheckCheck, TrendingDown, Target } from 'lucide-react';
+import { ExternalLink, BellOff, CheckCheck, TrendingDown, Target, Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
 import {
   useNotifications,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
+  useDeleteNotification,
+  useClearNotifications,
 } from '../api/hooks';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
 
@@ -20,6 +22,8 @@ export function NotificationsPage() {
   const { data, isLoading, isError } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
+  const remove = useDeleteNotification();
+  const clearAll = useClearNotifications();
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
@@ -32,13 +36,18 @@ export function NotificationsPage() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-bold">Уведомления</h1>
-        {hasUnread && (
-          <button onClick={() => markAll.mutate()} className="btn-ghost text-sm">
-            <CheckCheck className="h-4 w-4" /> Прочитать все
+        <div className="flex gap-2">
+          {hasUnread && (
+            <button onClick={() => markAll.mutate()} className="btn-ghost text-sm">
+              <CheckCheck className="h-4 w-4" /> Прочитать все
+            </button>
+          )}
+          <button onClick={() => clearAll.mutate()} className="btn-ghost text-sm text-rose-500">
+            <Trash2 className="h-4 w-4" /> Очистить
           </button>
-        )}
+        </div>
       </div>
 
       {data.map((n) => {
@@ -60,7 +69,16 @@ export function NotificationsPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <p className="font-medium">{n.title}</p>
-                <span className="shrink-0 text-xs text-slate-400">{formatWhen(n.createdAt)}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs text-slate-400">{formatWhen(n.createdAt)}</span>
+                  <button
+                    onClick={() => remove.mutate(n.id)}
+                    className="text-slate-300 hover:text-rose-500"
+                    title="Удалить"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-slate-500">{n.message}</p>
               <div className="mt-2 flex items-center gap-3">

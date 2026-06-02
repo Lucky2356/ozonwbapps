@@ -122,6 +122,21 @@ export function useRemoveTracked() {
   });
 }
 
+/** Запускает разовую проверку цены товара. Проверка асинхронная (через очередь воркера),
+ *  поэтому обновляем список с небольшой задержкой, чтобы подхватить новую цену. */
+export function useCheckTracked() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.post(`/tracked-products/${id}/check`)).data,
+    onSuccess: () => {
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['tracked'] });
+        qc.invalidateQueries({ queryKey: ['notifications-unread'] });
+      }, 6000);
+    },
+  });
+}
+
 export function useNotifications() {
   return useQuery({
     queryKey: ['notifications'],
@@ -153,6 +168,28 @@ export function useMarkAllNotificationsRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => (await api.post('/notifications/read-all')).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['notifications-unread'] });
+    },
+  });
+}
+
+export function useDeleteNotification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => (await api.delete(`/notifications/${id}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['notifications-unread'] });
+    },
+  });
+}
+
+export function useClearNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => (await api.delete('/notifications/clear')).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ['notifications-unread'] });

@@ -4,10 +4,11 @@ import { config } from './config';
 import { logger } from './logger';
 import { processSearch } from './processor';
 import { closeBrowser } from './adapters/browser';
-import { checkAllTrackedPrices } from './pricecheck';
+import { checkAllTrackedPrices, checkTrackedPriceById } from './pricecheck';
 import { startTelegramBot, stopTelegramBot } from './telegrambot';
 
 const QUEUE_NAME = 'search';
+const PRICE_CHECK_QUEUE_NAME = 'price-check';
 
 const worker = new Worker(
   QUEUE_NAME,
@@ -27,8 +28,25 @@ worker.on('failed', (job, err) =>
   logger.error('Задача провалена', { jobId: job?.id, error: String(err) }),
 );
 
-logger.info('Воркер запущен и слушает очередь', {
-  queue: QUEUE_NAME,
+// Очередь разовой проверки цены одного товара (по кнопке «Проверить сейчас» из приложения).
+const priceCheckWorker = new Worker(
+  PRICE_CHECK_QUEUE_NAME,
+  async (job) => {
+    const { trackedProductId } = job.data as { trackedProductId: string };
+    logger.info('Получена разовая проверка цены', { trackedProductId, jobId: job.id });
+    await checkTrackedPriceById(trackedProductId);
+  },
+  {
+    connection: config.redis,
+    concurrency: 1,
+  },
+);
+priceCheckWorker.on('failed', (job, err) =>
+  logger.error('Проверка цены провалена', { jobId: job?.id, error: String(err) }),
+);
+
+logger.info('Воркер запущен и слушает очереди', {
+  queues: [QUEUE_NAME, PRICE_CHECK_QUEUE_NAME],
   marketplaces: config.enabledMarketplaces,
 });
 
@@ -59,6 +77,7 @@ async function shutdown() {
   if (priceCheckTimer) clearInterval(priceCheckTimer);
   stopTelegramBot();
   await worker.close();
+  await priceCheckWorker.close();
   await closeBrowser();
   process.exit(0);
 }

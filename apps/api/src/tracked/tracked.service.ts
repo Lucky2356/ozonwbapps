@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { PRICE_CHECK_QUEUE } from '../queue/queue.module';
 import { CreateTrackedDto } from './dto';
 
 @Injectable()
 export class TrackedService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(PRICE_CHECK_QUEUE) private readonly priceCheckQueue: Queue,
+  ) {}
 
   async add(userId: string, dto: CreateTrackedDto) {
     const tracked = await this.prisma.trackedProduct.upsert({
@@ -49,5 +54,13 @@ export class TrackedService {
     if (!tracked) throw new NotFoundException('Отслеживаемый товар не найден');
     await this.prisma.trackedProduct.delete({ where: { id } });
     return { ok: true };
+  }
+
+  /** Ставит разовую проверку цены товара в очередь (кнопка «Проверить сейчас»). */
+  async requestCheck(userId: string, id: string) {
+    const tracked = await this.prisma.trackedProduct.findFirst({ where: { id, userId } });
+    if (!tracked) throw new NotFoundException('Отслеживаемый товар не найден');
+    await this.priceCheckQueue.add('price-check', { trackedProductId: id });
+    return { ok: true, queued: true };
   }
 }
