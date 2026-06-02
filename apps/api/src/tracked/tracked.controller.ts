@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser, AuthUser } from '../auth/current-user.decorator';
 import { TrackedService } from './tracked.service';
-import { CreateTrackedDto } from './dto';
+import { CreateTrackedDto, UpdateTrackedDto } from './dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('tracked-products')
@@ -22,6 +22,11 @@ export class TrackedController {
   @Post(':id/check')
   check(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.tracked.requestCheck(user.id, id);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: UpdateTrackedDto) {
+    return this.tracked.updateTarget(user.id, id, dto);
   }
 
   @Delete(':id')

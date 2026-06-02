@@ -1,16 +1,28 @@
+import { useState } from 'react';
 import { ExternalLink, Trash2, Star } from 'lucide-react';
 import { useFavorites, useRemoveFavorite } from '../api/hooks';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatPrice, marketplaceLabel } from '../lib/format';
+import { toast } from '../store/toast';
 
 export function FavoritesPage() {
   const { data, isLoading, isError } = useFavorites();
   const remove = useRemoveFavorite();
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
   if (!data || data.length === 0)
-    return <EmptyState text="В избранном пока пусто. Добавляйте товары из результатов поиска." />;
+    return (
+      <EmptyState text="В избранном пока пусто. Добавляйте товары из результатов поиска." action={{ to: '/', label: 'Перейти к поиску' }} />
+    );
+
+  const confirmRemove = () => {
+    if (!pendingId) return;
+    remove.mutate(pendingId, { onSuccess: () => toast.info('Убрано из избранного') });
+    setPendingId(null);
+  };
 
   return (
     <div className="space-y-3">
@@ -31,14 +43,33 @@ export function FavoritesPage() {
               )}
             </p>
           </div>
-          <a href={f.productUrl} target="_blank" rel="noreferrer" className="btn-ghost px-2.5">
+          <a
+            href={f.productUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-ghost px-2.5"
+            aria-label="Открыть товар"
+          >
             <ExternalLink className="h-4 w-4" />
           </a>
-          <button onClick={() => remove.mutate(f.id)} className="btn-ghost px-2.5 text-rose-500">
+          <button
+            onClick={() => setPendingId(f.id)}
+            className="btn-ghost px-2.5 text-rose-500"
+            aria-label="Убрать из избранного"
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
       ))}
+
+      <ConfirmDialog
+        open={pendingId !== null}
+        title="Убрать из избранного?"
+        message="Товар будет удалён из списка избранного."
+        confirmLabel="Убрать"
+        onConfirm={confirmRemove}
+        onCancel={() => setPendingId(null)}
+      />
     </div>
   );
 }

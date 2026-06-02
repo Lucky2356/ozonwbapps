@@ -8,11 +8,12 @@ import { buildImageCandidates, formatPrice, marketplaceColor, marketplaceLabel }
 interface Props {
   item: ResultItem;
   isFavorite?: boolean;
+  bestPrice?: boolean;
   onToggleFavorite?: (item: ResultItem) => void;
   onTrack?: (item: ResultItem) => void;
 }
 
-export function ProductCard({ item, isFavorite, onToggleFavorite, onTrack }: Props) {
+export function ProductCard({ item, isFavorite, bestPrice, onToggleFavorite, onTrack }: Props) {
   // Кандидаты-URL картинки (для WB — перебор basket-хостов при ошибке загрузки).
   const candidates = useMemo(() => buildImageCandidates(item.imageUrl), [item.imageUrl]);
   const [candidateIndex, setCandidateIndex] = useState(0);
@@ -42,6 +43,11 @@ export function ProductCard({ item, isFavorite, onToggleFavorite, onTrack }: Pro
         <span className="absolute right-2 top-2">
           <ScoreBadge score={item.score} />
         </span>
+        {bestPrice && (
+          <span className="absolute bottom-2 left-2 rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white shadow">
+            Лучшая цена
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
@@ -88,6 +94,7 @@ export function ProductCard({ item, isFavorite, onToggleFavorite, onTrack }: Pro
             target="_blank"
             rel="noreferrer"
             className="btn-primary flex-1 text-xs"
+            aria-label="Открыть товар на маркетплейсе"
           >
             <ExternalLink className="h-4 w-4" /> Открыть
           </a>
@@ -96,12 +103,18 @@ export function ProductCard({ item, isFavorite, onToggleFavorite, onTrack }: Pro
               onClick={() => onToggleFavorite(item)}
               className="btn-ghost px-2.5"
               title={isFavorite ? 'Убрать из избранного' : 'В избранное'}
+              aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
             >
               <Heart className={clsx('h-4 w-4', isFavorite && 'fill-rose-500 text-rose-500')} />
             </button>
           )}
           {onTrack && (
-            <button onClick={() => onTrack(item)} className="btn-ghost px-2.5" title="Отслеживать цену">
+            <button
+              onClick={() => onTrack(item)}
+              className="btn-ghost px-2.5"
+              title="Отслеживать цену"
+              aria-label="Отслеживать цену товара"
+            >
               <Bell className="h-4 w-4" />
             </button>
           )}

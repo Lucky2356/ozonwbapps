@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Loader2, AlertTriangle, PackageSearch } from 'lucide-react';
 
 export function LoadingState({ text = 'Загрузка…' }: { text?: string }) {
@@ -18,11 +19,22 @@ export function ErrorState({ text = 'Что-то пошло не так' }: { te
   );
 }
 
-export function EmptyState({ text = 'Ничего не найдено' }: { text?: string }) {
+export function EmptyState({
+  text = 'Ничего не найдено',
+  action,
+}: {
+  text?: string;
+  action?: { to: string; label: string };
+}) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
       <PackageSearch className="h-10 w-10" />
       <p className="max-w-sm text-center">{text}</p>
+      {action && (
+        <Link to={action.to} className="btn-primary mt-1">
+          {action.label}
+        </Link>
+      )}
     </div>
   );
 }

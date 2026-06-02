@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
+import { toast } from '../store/toast';
 import type {
   MarketplaceInfo,
   SearchResultsResponse,
@@ -17,6 +18,7 @@ export function useMarketplaces() {
   return useQuery({
     queryKey: ['marketplaces'],
     queryFn: async () => (await api.get<MarketplaceInfo[]>('/marketplaces')).data,
+    staleTime: 5 * 60_000, // список маркетплейсов меняется редко
   });
 }
 
@@ -82,6 +84,7 @@ export function useAddFavorite() {
     mutationFn: async (fav: Omit<Favorite, 'id' | 'createdAt'>) =>
       (await api.post('/favorites', fav)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
+    onError: () => toast.error('Не удалось добавить в избранное'),
   });
 }
 
@@ -90,6 +93,7 @@ export function useRemoveFavorite() {
   return useMutation({
     mutationFn: async (id: string) => (await api.delete(`/favorites/${id}`)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['favorites'] }),
+    onError: () => toast.error('Не удалось убрать из избранного'),
   });
 }
 
@@ -107,10 +111,21 @@ export function useAddTracked() {
       marketplace: string;
       title: string;
       productUrl: string;
-      targetPrice?: number;
+      targetPrice?: number | null;
       currentPrice?: number;
     }) => (await api.post('/tracked-products', payload)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tracked'] }),
+    onError: () => toast.error('Не удалось добавить в отслеживание'),
+  });
+}
+
+export function useUpdateTracked() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, targetPrice }: { id: string; targetPrice: number | null }) =>
+      (await api.patch(`/tracked-products/${id}`, { targetPrice })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tracked'] }),
+    onError: () => toast.error('Не удалось обновить целевую цену'),
   });
 }
 
@@ -119,6 +134,7 @@ export function useRemoveTracked() {
   return useMutation({
     mutationFn: async (id: string) => (await api.delete(`/tracked-products/${id}`)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tracked'] }),
+    onError: () => toast.error('Не удалось удалить из отслеживания'),
   });
 }
 
@@ -134,6 +150,7 @@ export function useCheckTracked() {
         qc.invalidateQueries({ queryKey: ['notifications-unread'] });
       }, 6000);
     },
+    onError: () => toast.error('Не удалось запустить проверку цены'),
   });
 }
 
@@ -201,6 +218,8 @@ export function useProfile() {
   return useQuery({
     queryKey: ['profile'],
     queryFn: async () => (await api.get<Profile>('/profile')).data,
+    // Обновлять при возврате на вкладку — чтобы статус привязки Telegram подхватился после бота.
+    refetchOnWindowFocus: true,
   });
 }
 

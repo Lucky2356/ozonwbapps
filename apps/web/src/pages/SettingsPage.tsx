@@ -8,6 +8,7 @@ import {
   useUpdateProfile,
   useCreateTelegramLink,
 } from '../api/hooks';
+import { toast } from '../store/toast';
 import type { TelegramLink } from '../api/types';
 
 export function SettingsPage() {
@@ -35,12 +36,14 @@ export function SettingsPage() {
   const disconnect = async () => {
     await updateProfile.mutateAsync({ telegramChatId: '' });
     setLink(null);
+    toast.info('Telegram отключён');
   };
 
   const saveManual = async () => {
     await updateProfile.mutateAsync({ telegramChatId: chatId });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    toast.success(chatId.trim() ? 'Chat ID сохранён' : 'Telegram-уведомления отключены');
   };
 
   return (

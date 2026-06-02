@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { SearchForm } from '../components/SearchForm';
+import { HowItWorks } from '../components/HowItWorks';
 import { useHistory } from '../api/hooks';
 import { marketplaceLabel } from '../lib/format';
 
@@ -15,6 +16,8 @@ export function DashboardPage() {
           Выберите маркетплейсы, задайте фильтры — мы сравним и покажем лучшие предложения.
         </p>
       </div>
+
+      <HowItWorks />
 
       <SearchForm />
 

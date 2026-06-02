@@ -1,17 +1,10 @@
 import type { SearchFormValues, SortOption } from '../api/types';
+import { SORT_OPTIONS } from '../lib/sort';
 
 interface Props {
   values: SearchFormValues;
   onChange: (patch: Partial<SearchFormValues>) => void;
 }
-
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'best_value', label: 'Сначала самые выгодные' },
-  { value: 'price_asc', label: 'Сначала дешёвые' },
-  { value: 'price_desc', label: 'Сначала дорогие' },
-  { value: 'rating', label: 'По рейтингу' },
-  { value: 'reviews', label: 'По количеству отзывов' },
-];
 
 /** Преобразует значение input в число или null. */
 function toNum(v: string): number | null {

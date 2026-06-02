@@ -34,10 +34,15 @@ export function Layout() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <span className="hidden text-sm text-slate-500 sm:inline">{user?.email}</span>
-          <NavLink to="/settings" className="btn-ghost px-2.5" title="Настройки">
+          <NavLink to="/settings" className="btn-ghost px-2.5" title="Настройки" aria-label="Настройки">
             <Settings className="h-4 w-4" />
           </NavLink>
-          <button onClick={handleLogout} className="btn-ghost px-2.5" title="Выйти">
+          <button
+            onClick={handleLogout}
+            className="btn-ghost px-2.5"
+            title="Выйти"
+            aria-label="Выйти из аккаунта"
+          >
             <LogOut className="h-4 w-4" />
           </button>
         </div>

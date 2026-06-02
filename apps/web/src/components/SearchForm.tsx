@@ -17,6 +17,8 @@ const DEFAULT_VALUES: SearchFormValues = {
   sort: 'best_value',
 };
 
+const EXAMPLE_QUERIES = ['наушники', 'кофеварка', 'робот-пылесос', 'кроссовки', 'рюкзак'];
+
 export function SearchForm() {
   const navigate = useNavigate();
   const { data: marketplaces, isLoading, isError } = useMarketplaces();
@@ -63,6 +65,19 @@ export function SearchForm() {
           onChange={(e) => patch({ query: e.target.value })}
           autoFocus
         />
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <span className="text-xs text-slate-400">Примеры:</span>
+          {EXAMPLE_QUERIES.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => patch({ query: q })}
+              className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
       </div>
 
       <MarketplaceSelector

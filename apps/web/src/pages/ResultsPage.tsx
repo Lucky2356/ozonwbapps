@@ -1,5 +1,6 @@
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Info } from 'lucide-react';
 import {
   useSearchStatus,
   useSearchResults,
@@ -9,9 +10,14 @@ import {
   useAddTracked,
 } from '../api/hooks';
 import { ProductCard } from '../components/ProductCard';
+import { TrackDialog } from '../components/TrackDialog';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
+import { SkeletonGrid } from '../components/SkeletonCard';
+import { ScoreLegend } from '../components/ScoreLegend';
 import { marketplaceColor, marketplaceLabel } from '../lib/format';
-import type { ResultItem } from '../api/types';
+import { SORT_OPTIONS, sortResults } from '../lib/sort';
+import { toast } from '../store/toast';
+import type { ResultItem, SortOption } from '../api/types';
 
 export function ResultsPage() {
   const { searchId } = useParams<{ searchId: string }>();
@@ -24,49 +30,72 @@ export function ResultsPage() {
   const removeFavorite = useRemoveFavorite();
   const addTracked = useAddTracked();
 
+  const [sort, setSort] = useState<SortOption>('best_value');
+  const [showLegend, setShowLegend] = useState(false);
+  const [trackItem, setTrackItem] = useState<ResultItem | null>(null);
+
   const favByUrl = new Map((favorites.data ?? []).map((f) => [f.productUrl, f.id]));
+
+  const items = results.data?.results ?? [];
+  const sortedItems = useMemo(() => sortResults(items, sort), [items, sort]);
+  const minPrice = useMemo(
+    () => (items.length ? Math.min(...items.map((i) => i.price)) : 0),
+    [items],
+  );
 
   const toggleFavorite = (item: ResultItem) => {
     const existingId = favByUrl.get(item.productUrl);
     if (existingId) {
-      removeFavorite.mutate(existingId);
+      removeFavorite.mutate(existingId, { onSuccess: () => toast.info('Убрано из избранного') });
     } else {
-      addFavorite.mutate({
-        marketplace: item.marketplace,
-        title: item.title,
-        price: item.price,
-        oldPrice: item.oldPrice,
-        rating: item.rating,
-        reviewsCount: item.reviewsCount,
-        imageUrl: item.imageUrl,
-        productUrl: item.productUrl,
-      });
+      addFavorite.mutate(
+        {
+          marketplace: item.marketplace,
+          title: item.title,
+          price: item.price,
+          oldPrice: item.oldPrice,
+          rating: item.rating,
+          reviewsCount: item.reviewsCount,
+          imageUrl: item.imageUrl,
+          productUrl: item.productUrl,
+        },
+        { onSuccess: () => toast.success('Добавлено в избранное') },
+      );
     }
   };
 
-  const track = (item: ResultItem) => {
+  const confirmTrack = (targetPrice: number | null) => {
+    if (!trackItem) return;
+    const item = trackItem;
+    setTrackItem(null);
     addTracked.mutate(
       {
         marketplace: item.marketplace,
         title: item.title,
         productUrl: item.productUrl,
         currentPrice: item.price,
+        targetPrice,
       },
       {
-        onSuccess: () => alert('Товар добавлен в отслеживаемые'),
+        onSuccess: () =>
+          toast.success(
+            targetPrice
+              ? `Отслеживаем. Сообщим, когда цена станет ниже ${targetPrice.toLocaleString('ru-RU')} ₽`
+              : 'Товар добавлен в отслеживаемые',
+          ),
       },
     );
   };
 
   const header = (
     <div className="mb-4 flex items-center gap-3">
-      <Link to="/" className="btn-ghost px-2.5">
+      <Link to="/" className="btn-ghost px-2.5" aria-label="Назад к поиску">
         <ArrowLeft className="h-4 w-4" />
       </Link>
       <div>
         <h1 className="text-xl font-bold">{status.data?.query ?? 'Результаты'}</h1>
         {ready && results.data && (
-          <p className="text-sm text-slate-500">Найдено предложений: {results.data.results.length}</p>
+          <p className="text-sm text-slate-500">Найдено предложений: {items.length}</p>
         )}
       </div>
     </div>
@@ -86,13 +115,15 @@ export function ResultsPage() {
     return (
       <>
         {header}
-        <LoadingState text="Ищем и сравниваем предложения на маркетплейсах…" />
+        <p className="mb-4 text-center text-sm text-slate-500">
+          Ищем и сравниваем предложения на маркетплейсах…
+        </p>
+        <SkeletonGrid />
       </>
     );
   }
 
-  if (results.isLoading) return <LoadingState text="Готовим результаты…" />;
-  const items = results.data?.results ?? [];
+  if (results.isLoading) return <SkeletonGrid />;
   if (items.length === 0) {
     return (
       <>
@@ -110,7 +141,8 @@ export function ResultsPage() {
   return (
     <>
       {header}
-      <div className="mb-4 flex flex-wrap gap-2">
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         {selected.map((m) => {
           const n = counts.get(m) ?? 0;
           return (
@@ -129,17 +161,56 @@ export function ResultsPage() {
           );
         })}
       </div>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <button
+          onClick={() => setShowLegend((v) => !v)}
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand"
+        >
+          <Info className="h-4 w-4" /> Что такое балл выгодности?
+        </button>
+        <label className="flex items-center gap-2 text-sm text-slate-500">
+          Сортировка
+          <select
+            className="input w-auto py-1.5"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortOption)}
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {showLegend && (
+        <div className="mb-4">
+          <ScoreLegend />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {items.map((item) => (
+        {sortedItems.map((item) => (
           <ProductCard
             key={item.id}
             item={item}
             isFavorite={favByUrl.has(item.productUrl)}
+            bestPrice={item.price === minPrice}
             onToggleFavorite={toggleFavorite}
-            onTrack={track}
+            onTrack={(it) => setTrackItem(it)}
           />
         ))}
       </div>
+
+      <TrackDialog
+        open={trackItem !== null}
+        title={trackItem?.title ?? ''}
+        currentPrice={trackItem?.price ?? 0}
+        onConfirm={confirmTrack}
+        onCancel={() => setTrackItem(null)}
+      />
     </>
   );
 }

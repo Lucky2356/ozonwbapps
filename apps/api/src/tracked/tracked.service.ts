@@ -2,7 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { PRICE_CHECK_QUEUE } from '../queue/queue.module';
-import { CreateTrackedDto } from './dto';
+import { CreateTrackedDto, UpdateTrackedDto } from './dto';
 
 @Injectable()
 export class TrackedService {
@@ -46,6 +46,16 @@ export class TrackedService {
       include: {
         priceHistory: { orderBy: { recordedAt: 'asc' } },
       },
+    });
+  }
+
+  /** Обновляет целевую цену отслеживаемого товара. */
+  async updateTarget(userId: string, id: string, dto: UpdateTrackedDto) {
+    const tracked = await this.prisma.trackedProduct.findFirst({ where: { id, userId } });
+    if (!tracked) throw new NotFoundException('Отслеживаемый товар не найден');
+    return this.prisma.trackedProduct.update({
+      where: { id },
+      data: { targetPrice: dto.targetPrice ?? null },
     });
   }
 

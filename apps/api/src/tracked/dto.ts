@@ -20,3 +20,11 @@ export class CreateTrackedDto {
   @Min(0)
   currentPrice?: number;
 }
+
+export class UpdateTrackedDto {
+  /** Новая целевая цена; null/отсутствие — убрать цель (уведомлять о любом снижении). */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  targetPrice?: number | null;
+}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ExternalLink, BellOff, CheckCheck, TrendingDown, Target, Trash2, X } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -8,6 +9,7 @@ import {
   useClearNotifications,
 } from '../api/hooks';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString('ru-RU', {
@@ -24,6 +26,7 @@ export function NotificationsPage() {
   const markAll = useMarkAllNotificationsRead();
   const remove = useDeleteNotification();
   const clearAll = useClearNotifications();
+  const [confirmClear, setConfirmClear] = useState(false);
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
@@ -44,7 +47,7 @@ export function NotificationsPage() {
               <CheckCheck className="h-4 w-4" /> Прочитать все
             </button>
           )}
-          <button onClick={() => clearAll.mutate()} className="btn-ghost text-sm text-rose-500">
+          <button onClick={() => setConfirmClear(true)} className="btn-ghost text-sm text-rose-500">
             <Trash2 className="h-4 w-4" /> Очистить
           </button>
         </div>
@@ -105,6 +108,18 @@ export function NotificationsPage() {
           </div>
         );
       })}
+
+      <ConfirmDialog
+        open={confirmClear}
+        title="Очистить уведомления?"
+        message="Все уведомления будут удалены без возможности восстановления."
+        confirmLabel="Очистить"
+        onConfirm={() => {
+          clearAll.mutate();
+          setConfirmClear(false);
+        }}
+        onCancel={() => setConfirmClear(false)}
+      />
     </div>
   );
 }
