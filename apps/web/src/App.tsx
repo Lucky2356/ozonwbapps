@@ -7,6 +7,7 @@ import { ResultsPage } from './pages/ResultsPage';
 import { FavoritesPage } from './pages/FavoritesPage';
 import { TrackedProductsPage } from './pages/TrackedProductsPage';
 import { SearchHistoryPage } from './pages/SearchHistoryPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/tracked" element={<TrackedProductsPage />} />
           <Route path="/history" element={<SearchHistoryPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>

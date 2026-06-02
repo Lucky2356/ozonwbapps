@@ -7,6 +7,8 @@ import { SearchModule } from './search/search.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { TrackedModule } from './tracked/tracked.module';
 import { MarketplacesModule } from './marketplaces/marketplaces.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ProfileModule } from './profile/profile.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -21,6 +23,8 @@ import { HealthController } from './health.controller';
     FavoritesModule,
     TrackedModule,
     MarketplacesModule,
+    NotificationsModule,
+    ProfileModule,
   ],
   controllers: [HealthController],
 })

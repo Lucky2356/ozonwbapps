@@ -11,4 +11,11 @@ export interface MarketplaceAdapter {
    * - не бросать исключения наружу без необходимости (ошибки логируются вызывающим кодом).
    */
   search(params: SearchParams): Promise<MarketplaceOffer[]>;
+
+  /**
+   * Текущая цена одного товара по его URL (в рублях) — для пересбора истории цен.
+   * Возвращает null, если получить цену не удалось (анти-бот, товара нет и т.п.).
+   * Необязателен: адаптеры без него просто не участвуют в трекинге цен.
+   */
+  fetchProductPrice?(productUrl: string): Promise<number | null>;
 }

@@ -80,6 +80,37 @@ export class OzonAdapter implements MarketplaceAdapter {
     }
   }
 
+  /** Текущая цена одного товара Ozon по URL детальной страницы (для трекинга цен). */
+  async fetchProductPrice(productUrl: string): Promise<number | null> {
+    if (!config.ozon.enabled) return null;
+    let context;
+    try {
+      const browser = await getBrowser();
+      context = await browser.newContext({
+        locale: 'ru-RU',
+        viewport: { width: 1366, height: 900 },
+        userAgent: REALISTIC_UA,
+      });
+      const page = await context.newPage();
+      await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.ozon.timeoutMs });
+      await page.waitForSelector('[data-widget="webPrice"]', { timeout: 12000 }).catch(() => undefined);
+
+      const text = await page.evaluate(() => {
+        const el = document.querySelector('[data-widget="webPrice"]');
+        return el?.textContent || '';
+      });
+      // Берём первое число с ₽ (это текущая цена; зачёркнутая идёт после).
+      const m = text.match(/(\d[\d\s ]*)\s*₽/);
+      const price = Number((m?.[1] || '').replace(/\D/g, ''));
+      return Number.isFinite(price) && price > 0 ? price : null;
+    } catch (e) {
+      logger.warn('Ozon: не удалось получить цену товара', { productUrl, error: String(e) });
+      return null;
+    } finally {
+      if (context) await context.close().catch(() => undefined);
+    }
+  }
+
   /** Прокрутка страницы для ленивой подгрузки товаров. */
   private async autoScroll(page: Page): Promise<void> {
     try {

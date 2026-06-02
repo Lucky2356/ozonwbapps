@@ -13,11 +13,14 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
+  /** Chat ID Telegram для уведомлений (если пользователь подключил бота). */
+  telegramChatId String?
   createdAt    DateTime @default(now())
 
   searches        Search[]
   favorites       Favorite[]
   trackedProducts TrackedProduct[]
+  notifications   Notification[]
 }
 
 model Search {
@@ -106,6 +109,23 @@ model PriceHistory {
   recordedAt       DateTime       @default(now())
 
   @@index([trackedProductId, recordedAt])
+}
+
+model Notification {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** Тип события: price_drop (цена упала) | target_reached (достигнута целевая цена). */
+  type             String   @default("price_drop")
+  title            String
+  message          String
+  /** Привязка к отслеживаемому товару (если есть). */
+  trackedProductId String?
+  productUrl       String?
+  read             Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model ParserLog {

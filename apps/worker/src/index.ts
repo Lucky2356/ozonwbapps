@@ -4,6 +4,7 @@ import { config } from './config';
 import { logger } from './logger';
 import { processSearch } from './processor';
 import { closeBrowser } from './adapters/browser';
+import { checkAllTrackedPrices } from './pricecheck';
 
 const QUEUE_NAME = 'search';
 
@@ -30,8 +31,28 @@ logger.info('Воркер запущен и слушает очередь', {
   marketplaces: config.enabledMarketplaces,
 });
 
+// --- Cron пересбора цен отслеживаемых товаров ---
+let priceCheckTimer: ReturnType<typeof setInterval> | undefined;
+function schedulePriceChecks() {
+  const intervalMin = config.priceCheck.intervalMin;
+  if (intervalMin <= 0) {
+    logger.info('Трекинг цен: cron выключен (PRICE_CHECK_INTERVAL_MIN=0)');
+    return;
+  }
+  const run = () =>
+    checkAllTrackedPrices().catch((e) => logger.error('Трекинг цен: сбой прогона', { error: String(e) }));
+  setTimeout(run, config.priceCheck.initialDelaySec * 1000);
+  priceCheckTimer = setInterval(run, intervalMin * 60 * 1000);
+  logger.info('Трекинг цен: cron запланирован', {
+    intervalMin,
+    initialDelaySec: config.priceCheck.initialDelaySec,
+  });
+}
+schedulePriceChecks();
+
 async function shutdown() {
   logger.info('Остановка воркера...');
+  if (priceCheckTimer) clearInterval(priceCheckTimer);
   await worker.close();
   await closeBrowser();
   process.exit(0);

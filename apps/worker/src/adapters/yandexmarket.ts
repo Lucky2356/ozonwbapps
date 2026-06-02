@@ -88,6 +88,39 @@ export class YandexMarketAdapter implements MarketplaceAdapter {
     }
   }
 
+  /** Текущая цена одного товара Яндекс.Маркета по URL детальной страницы (для трекинга цен). */
+  async fetchProductPrice(productUrl: string): Promise<number | null> {
+    let context;
+    try {
+      const browser = await getBrowser(config.yandex.headless);
+      context = await browser.newContext({
+        locale: 'ru-RU',
+        viewport: { width: 1366, height: 900 },
+        userAgent: REALISTIC_UA,
+      });
+      const page = await context.newPage();
+      await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.yandex.timeoutMs });
+      await page
+        .waitForSelector('[data-auto="price-value"], [data-auto="snippet-price-current"]', { timeout: 12000 })
+        .catch(() => undefined);
+
+      const text = await page.evaluate(() => {
+        const el =
+          document.querySelector('[data-auto="price-value"]') ||
+          document.querySelector('[data-auto="snippet-price-current"]');
+        return el?.textContent || '';
+      });
+      const digits = (text.match(/\d[\d\s ]*/)?.[0] || '').replace(/\D/g, '');
+      const price = Number(digits);
+      return Number.isFinite(price) && price > 0 ? price : null;
+    } catch (e) {
+      logger.warn('Яндекс.Маркет: не удалось получить цену товара', { productUrl, error: String(e) });
+      return null;
+    } finally {
+      if (context) await context.close().catch(() => undefined);
+    }
+  }
+
   private async autoScroll(page: Page): Promise<void> {
     try {
       for (let i = 0; i < 5; i++) {

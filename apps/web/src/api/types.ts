@@ -72,6 +72,23 @@ export interface TrackedProduct {
   priceHistory: { id: string; price: number; recordedAt: string }[];
 }
 
+export interface Notification {
+  id: string;
+  type: 'price_drop' | 'target_reached' | string;
+  title: string;
+  message: string;
+  trackedProductId?: string | null;
+  productUrl?: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  telegramChatId?: string | null;
+}
+
 export interface SearchFormValues {
   query: string;
   marketplaces: string[];

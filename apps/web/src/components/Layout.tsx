@@ -1,19 +1,23 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Search, Heart, Bell, History, LogOut, Sparkles } from 'lucide-react';
+import { Search, Heart, Bell, History, LogOut, Sparkles, Inbox, Settings } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../store/auth';
+import { useUnreadCount } from '../api/hooks';
 import { ThemeToggle } from './ThemeToggle';
 
 const NAV = [
   { to: '/', label: 'Поиск', icon: Search, end: true },
   { to: '/favorites', label: 'Избранное', icon: Heart },
   { to: '/tracked', label: 'Отслеживание', icon: Bell },
+  { to: '/notifications', label: 'Уведомления', icon: Inbox, badge: true },
   { to: '/history', label: 'История', icon: History },
 ];
 
 export function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { data: unread } = useUnreadCount();
+  const unreadCount = unread?.count ?? 0;
 
   const handleLogout = () => {
     logout();
@@ -30,6 +34,9 @@ export function Layout() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <span className="hidden text-sm text-slate-500 sm:inline">{user?.email}</span>
+          <NavLink to="/settings" className="btn-ghost px-2.5" title="Настройки">
+            <Settings className="h-4 w-4" />
+          </NavLink>
           <button onClick={handleLogout} className="btn-ghost px-2.5" title="Выйти">
             <LogOut className="h-4 w-4" />
           </button>
@@ -51,7 +58,14 @@ export function Layout() {
               )
             }
           >
-            <n.icon className="h-4 w-4" />
+            <span className="relative">
+              <n.icon className="h-4 w-4" />
+              {n.badge && unreadCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </span>
             {n.label}
           </NavLink>
         ))}

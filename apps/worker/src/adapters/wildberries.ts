@@ -167,6 +167,40 @@ export class WildberriesAdapter implements MarketplaceAdapter {
     }
   }
 
+  /** Текущая цена одного товара WB по URL детальной страницы (для трекинга цен). */
+  async fetchProductPrice(productUrl: string): Promise<number | null> {
+    let context;
+    try {
+      const browser = await getBrowser(config.wb.headless);
+      context = await browser.newContext({
+        locale: 'ru-RU',
+        viewport: { width: 1366, height: 900 },
+        userAgent: REALISTIC_UA,
+      });
+      const page = await context.newPage();
+      await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page
+        .waitForSelector('.price-block__final-price, .product-page__price-block', { timeout: 12000 })
+        .catch(() => undefined);
+
+      const text = await page.evaluate(() => {
+        const el =
+          document.querySelector('.price-block__final-price') ||
+          document.querySelector('ins.price-block__final-price') ||
+          document.querySelector('.product-page__price-block');
+        return el?.textContent || '';
+      });
+      const digits = (text.match(/\d[\d\s ]*/)?.[0] || '').replace(/\D/g, '');
+      const price = Number(digits);
+      return Number.isFinite(price) && price > 0 ? price : null;
+    } catch (e) {
+      logger.warn('WB: не удалось получить цену товара', { productUrl, error: String(e) });
+      return null;
+    } finally {
+      if (context) await context.close().catch(() => undefined);
+    }
+  }
+
   /**
    * Выполняет запросы к search.wb.ru изнутри страницы (page.evaluate) — у них есть куки
    * и сессия реального визита, поэтому WB отдаёт нормальный каталог. Если ответ — preset
