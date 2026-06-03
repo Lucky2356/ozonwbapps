@@ -5,6 +5,7 @@ import { useMarketplaces, useCreateSearch } from '../api/hooks';
 import { MarketplaceSelector } from './MarketplaceSelector';
 import { FiltersPanel } from './FiltersPanel';
 import { LoadingState, ErrorState } from './states';
+import { loadPrefs, savePrefs } from '../lib/prefs';
 import type { SearchFormValues } from '../api/types';
 
 const DEFAULT_VALUES: SearchFormValues = {
@@ -23,7 +24,11 @@ export function SearchForm() {
   const navigate = useNavigate();
   const { data: marketplaces, isLoading, isError } = useMarketplaces();
   const createSearch = useCreateSearch();
-  const [values, setValues] = useState<SearchFormValues>(DEFAULT_VALUES);
+  // Восстанавливаем последние параметры поиска (кроме самого запроса).
+  const [values, setValues] = useState<SearchFormValues>(() => ({
+    ...DEFAULT_VALUES,
+    ...loadPrefs(),
+  }));
   const [error, setError] = useState<string | null>(null);
 
   // По умолчанию выбираем все включённые маркетплейсы.
@@ -44,6 +49,7 @@ export function SearchForm() {
       return;
     }
     try {
+      savePrefs({ ...values, marketplaces: selected });
       const res = await createSearch.mutateAsync({ ...values, marketplaces: selected });
       navigate(`/results/${res.searchId}`);
     } catch {

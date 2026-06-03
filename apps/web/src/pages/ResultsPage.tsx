@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Info, LayoutGrid, Scale, Download } from 'lucide-react';
+import { ArrowLeft, Info, LayoutGrid, Scale, Download, X } from 'lucide-react';
 import {
   useSearchStatus,
   useSearchResults,
@@ -35,11 +35,22 @@ export function ResultsPage() {
   const [sort, setSort] = useState<SortOption>('best_value');
   const [showLegend, setShowLegend] = useState(false);
   const [view, setView] = useState<'list' | 'compare'>('list');
+  const [filterText, setFilterText] = useState('');
   const [trackItem, setTrackItem] = useState<ResultItem | null>(null);
 
   const favByUrl = new Map((favorites.data ?? []).map((f) => [f.productUrl, f.id]));
 
-  const items = results.data?.results ?? [];
+  const allItems = results.data?.results ?? [];
+  // Быстрый клиентский фильтр по словам из названия (все слова должны встретиться).
+  const items = useMemo(() => {
+    const q = filterText.trim().toLowerCase();
+    if (!q) return allItems;
+    const terms = q.split(/\s+/);
+    return allItems.filter((i) => {
+      const title = i.title.toLowerCase();
+      return terms.every((t) => title.includes(t));
+    });
+  }, [allItems, filterText]);
   const sortedItems = useMemo(() => sortResults(items, sort), [items, sort]);
   const minPrice = useMemo(
     () => (items.length ? Math.min(...items.map((i) => i.price)) : 0),
@@ -105,7 +116,7 @@ export function ResultsPage() {
       <div>
         <h1 className="text-xl font-bold">{status.data?.query ?? 'Результаты'}</h1>
         {ready && results.data && (
-          <p className="text-sm text-slate-500">Найдено предложений: {items.length}</p>
+          <p className="text-sm text-slate-500">Найдено предложений: {allItems.length}</p>
         )}
       </div>
     </div>
@@ -134,7 +145,7 @@ export function ResultsPage() {
   }
 
   if (results.isLoading) return <SkeletonGrid />;
-  if (items.length === 0) {
+  if (allItems.length === 0) {
     return (
       <>
         {header}
@@ -146,7 +157,7 @@ export function ResultsPage() {
   // Сводка по источникам: сколько товаров с каждого выбранного маркетплейса.
   const selected = status.data?.marketplaces ?? [];
   const counts = new Map<string, number>();
-  for (const it of items) counts.set(it.marketplace, (counts.get(it.marketplace) ?? 0) + 1);
+  for (const it of allItems) counts.set(it.marketplace, (counts.get(it.marketplace) ?? 0) + 1);
 
   return (
     <>
@@ -239,7 +250,33 @@ export function ResultsPage() {
         </div>
       )}
 
-      {view === 'compare' ? (
+      {allItems.length > 6 && (
+        <div className="relative mb-4">
+          <input
+            className="input pr-9"
+            placeholder="Фильтр по названию (например: 256 ГБ, чёрный)…"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            aria-label="Фильтр результатов по названию"
+          />
+          {filterText && (
+            <button
+              onClick={() => setFilterText('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              aria-label="Очистить фильтр"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {filterText.trim() && (
+            <p className="mt-1 text-xs text-slate-400">Показано {items.length} из {allItems.length}</p>
+          )}
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <EmptyState text="Под фильтр ничего не подошло. Измените или очистите фильтр." />
+      ) : view === 'compare' ? (
         <PriceComparison
           items={items}
           favByUrl={favByUrl}
