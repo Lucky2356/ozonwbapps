@@ -3,6 +3,7 @@ import { MarketplaceOffer, SearchParams } from '@ozonwb/shared';
 import { MarketplaceAdapter } from './types';
 import { applyFilters } from './base';
 import { getBrowser, REALISTIC_UA } from './browser';
+import { extractProductsFromDom } from './domscrape';
 import { config } from '../config';
 import { logger } from '../logger';
 
@@ -32,10 +33,10 @@ export class DnsAdapter implements MarketplaceAdapter {
       const page = await context.newPage();
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: config.dns.timeoutMs });
 
-      const appeared = await page
-        .waitForSelector('.catalog-product, [data-id].catalog-product', { timeout: 12000 })
-        .then(() => true)
-        .catch(() => false);
+      await page
+        .waitForSelector('.catalog-product, a[href*="/product/"]', { timeout: 15000 })
+        .catch(() => undefined);
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => undefined);
 
       const guarded = await page
         .$('text=/DDoS-Guard|проверка браузера|captcha/i')
@@ -45,15 +46,22 @@ export class DnsAdapter implements MarketplaceAdapter {
         logger.warn('DNS: анти-бот-защита (DDoS-Guard) — пропускаю');
         return [];
       }
-      if (!appeared) {
-        logger.warn('DNS: каталог не отрисовался (возможна антибот-защита)');
-        return [];
-      }
 
       await this.autoScroll(page);
 
       const collectedAt = new Date().toISOString();
-      const offers = await this.fromDom(page, collectedAt);
+      // Сначала точный парсер, затем — универсальный фолбэк (если вёрстка изменилась).
+      let offers = await this.fromDom(page, collectedAt);
+      if (offers.length === 0) {
+        offers = await extractProductsFromDom(
+          page,
+          { marketplace: 'dns', linkSelector: 'a[href*="/product/"]', idRegex: '/product/([0-9a-f-]+)' },
+          collectedAt,
+        );
+      }
+      if (offers.length === 0) {
+        logger.warn('DNS: каталог не отрисовался (возможна антибот-защита)');
+      }
       const limited = offers.slice(0, params.maxItems ?? config.maxItems);
       logger.info('DNS: собрано товаров', { count: limited.length });
       return applyFilters(limited, params.filters);

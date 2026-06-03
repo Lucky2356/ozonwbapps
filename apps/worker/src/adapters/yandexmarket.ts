@@ -3,6 +3,7 @@ import { MarketplaceOffer, SearchParams } from '@ozonwb/shared';
 import { MarketplaceAdapter } from './types';
 import { applyFilters } from './base';
 import { getBrowser, REALISTIC_UA } from './browser';
+import { extractProductsFromDom } from './domscrape';
 import { config } from '../config';
 import { logger } from '../logger';
 
@@ -75,6 +76,13 @@ export class YandexMarketAdapter implements MarketplaceAdapter {
       if (offers.length === 0) {
         logger.warn('Яндекс.Маркет: JSON не разобран, пробую DOM');
         offers = await this.fromDom(page, collectedAt);
+      }
+      if (offers.length === 0) {
+        offers = await extractProductsFromDom(
+          page,
+          { marketplace: 'yandex_market', linkSelector: 'a[href*="/product"]', idRegex: 'product(?:--[^/]*)?/(\\d+)' },
+          collectedAt,
+        );
       }
 
       const limited = offers.slice(0, params.maxItems ?? config.maxItems);

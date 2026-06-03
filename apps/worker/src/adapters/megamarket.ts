@@ -3,6 +3,7 @@ import { MarketplaceOffer, SearchParams } from '@ozonwb/shared';
 import { MarketplaceAdapter } from './types';
 import { applyFilters } from './base';
 import { getBrowser, REALISTIC_UA } from './browser';
+import { extractProductsFromDom } from './domscrape';
 import { config } from '../config';
 import { logger } from '../logger';
 
@@ -52,10 +53,22 @@ export class MegamarketAdapter implements MarketplaceAdapter {
         return [];
       }
 
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => undefined);
       await this.autoScroll(page);
 
       const collectedAt = new Date().toISOString();
-      const offers = await this.fromDom(page, collectedAt);
+      let offers = await this.fromDom(page, collectedAt);
+      if (offers.length === 0) {
+        offers = await extractProductsFromDom(
+          page,
+          {
+            marketplace: 'megamarket',
+            linkSelector: 'a[href*="/catalog/details/"]',
+            idRegex: '/catalog/details/([^/?]+)',
+          },
+          collectedAt,
+        );
+      }
       const limited = offers.slice(0, params.maxItems ?? config.maxItems);
       logger.info('Мегамаркет: собрано товаров', { count: limited.length });
       return applyFilters(limited, params.filters);
