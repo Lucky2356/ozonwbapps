@@ -226,8 +226,11 @@ export function useProfile() {
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { telegramChatId?: string | null }) =>
-      (await api.patch<Profile>('/profile', payload)).data,
+    mutationFn: async (payload: {
+      telegramChatId?: string | null;
+      priceDropThresholdPercent?: number;
+      telegramDigest?: 'off' | 'daily' | 'weekly';
+    }) => (await api.patch<Profile>('/profile', payload)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['profile'] }),
   });
 }

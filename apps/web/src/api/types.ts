@@ -83,11 +83,15 @@ export interface Notification {
   createdAt: string;
 }
 
+export type DigestOption = 'off' | 'daily' | 'weekly';
+
 export interface Profile {
   id: string;
   email: string;
   telegramChatId?: string | null;
   telegramConfigured?: boolean;
+  priceDropThresholdPercent?: number;
+  telegramDigest?: DigestOption;
 }
 
 export interface TelegramLink {

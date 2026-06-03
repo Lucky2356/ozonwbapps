@@ -9,7 +9,7 @@ import {
   useCreateTelegramLink,
 } from '../api/hooks';
 import { toast } from '../store/toast';
-import type { TelegramLink } from '../api/types';
+import type { TelegramLink, DigestOption } from '../api/types';
 
 export function SettingsPage() {
   const { user, logout } = useAuth();
@@ -161,6 +161,8 @@ export function SettingsPage() {
         )}
       </div>
 
+      <PriceAlertsCard />
+
       <div className="card p-5">
         <h2 className="mb-2 font-semibold">О выгодности</h2>
         <p className="text-sm text-slate-500">
@@ -172,6 +174,79 @@ export function SettingsPage() {
       <button onClick={logout} className="btn-ghost w-full text-rose-500">
         Выйти из аккаунта
       </button>
+    </div>
+  );
+}
+
+const THRESHOLDS = [1, 3, 5, 10, 15];
+const DIGESTS: { value: DigestOption; label: string }[] = [
+  { value: 'off', label: 'Не присылать' },
+  { value: 'daily', label: 'Раз в день' },
+  { value: 'weekly', label: 'Раз в неделю' },
+];
+
+/** Карточка настроек ценовых уведомлений: порог снижения и дайджест в Telegram. */
+function PriceAlertsCard() {
+  const { data: profile } = useProfile();
+  const update = useUpdateProfile();
+
+  const threshold = profile?.priceDropThresholdPercent ?? 1;
+  const digest = profile?.telegramDigest ?? 'off';
+
+  return (
+    <div className="card space-y-4 p-5">
+      <div>
+        <h2 className="font-semibold">Уведомления о ценах</h2>
+        <p className="text-sm text-slate-500">
+          Когда у товара не задана целевая цена, сообщим о снижении не меньше выбранного порога.
+          Новый исторический минимум присылаем всегда.
+        </p>
+      </div>
+
+      <label className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-slate-600 dark:text-slate-300">Порог снижения цены</span>
+        <select
+          className="input w-auto py-1.5"
+          value={threshold}
+          onChange={(e) =>
+            update.mutate(
+              { priceDropThresholdPercent: Number(e.target.value) },
+              { onSuccess: () => toast.success('Порог сохранён') },
+            )
+          }
+        >
+          {THRESHOLDS.map((t) => (
+            <option key={t} value={t}>
+              от {t}%
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-slate-600 dark:text-slate-300">Дайджест снижений в Telegram</span>
+        <select
+          className="input w-auto py-1.5"
+          value={digest}
+          onChange={(e) =>
+            update.mutate(
+              { telegramDigest: e.target.value as DigestOption },
+              { onSuccess: () => toast.success('Настройка дайджеста сохранена') },
+            )
+          }
+        >
+          {DIGESTS.map((d) => (
+            <option key={d.value} value={d.value}>
+              {d.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {digest !== 'off' && !profile?.telegramChatId && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          Чтобы получать дайджест, подключите Telegram выше.
+        </p>
+      )}
     </div>
   );
 }

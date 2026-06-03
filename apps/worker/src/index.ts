@@ -5,6 +5,7 @@ import { logger } from './logger';
 import { processSearch } from './processor';
 import { closeBrowser } from './adapters/browser';
 import { checkAllTrackedPrices, checkTrackedPriceById } from './pricecheck';
+import { sendDigests } from './digest';
 import { startTelegramBot, stopTelegramBot } from './telegrambot';
 
 const QUEUE_NAME = 'search';
@@ -69,12 +70,38 @@ function schedulePriceChecks() {
 }
 schedulePriceChecks();
 
+// --- Дайджест снижений цен в Telegram (раз в день/неделю в заданный час) ---
+let digestTimer: ReturnType<typeof setInterval> | undefined;
+let lastDailyDigest = '';
+let lastWeeklyDigest = '';
+function scheduleDigests() {
+  const tick = () => {
+    const now = new Date();
+    if (now.getHours() !== config.digest.hour) return;
+    const dayKey = now.toISOString().slice(0, 10);
+    if (lastDailyDigest !== dayKey) {
+      lastDailyDigest = dayKey;
+      sendDigests('daily').catch((e) => logger.error('Дайджест(день): сбой', { error: String(e) }));
+    }
+    // Еженедельный — по понедельникам (getDay()===1).
+    if (now.getDay() === 1 && lastWeeklyDigest !== dayKey) {
+      lastWeeklyDigest = dayKey;
+      sendDigests('weekly').catch((e) => logger.error('Дайджест(неделя): сбой', { error: String(e) }));
+    }
+  };
+  digestTimer = setInterval(tick, 60 * 60 * 1000); // ежечасная проверка
+  tick();
+  logger.info('Дайджест: cron запланирован', { hour: config.digest.hour });
+}
+scheduleDigests();
+
 // --- Telegram-бот (привязка аккаунта + команды) ---
 startTelegramBot();
 
 async function shutdown() {
   logger.info('Остановка воркера...');
   if (priceCheckTimer) clearInterval(priceCheckTimer);
+  if (digestTimer) clearInterval(digestTimer);
   stopTelegramBot();
   await worker.close();
   await priceCheckWorker.close();

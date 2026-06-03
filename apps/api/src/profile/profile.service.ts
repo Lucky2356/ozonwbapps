@@ -8,10 +8,18 @@ import { getBotUsername, isTelegramConfigured } from './telegram';
 export class ProfileService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly publicSelect = {
+    id: true,
+    email: true,
+    telegramChatId: true,
+    priceDropThresholdPercent: true,
+    telegramDigest: true,
+  } as const;
+
   async get(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, telegramChatId: true },
+      select: this.publicSelect,
     });
     return { ...user, telegramConfigured: isTelegramConfigured() };
   }
@@ -22,8 +30,12 @@ export class ProfileService {
       dto.telegramChatId === undefined ? undefined : dto.telegramChatId?.trim() || null;
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { telegramChatId },
-      select: { id: true, email: true, telegramChatId: true },
+      data: {
+        telegramChatId,
+        priceDropThresholdPercent: dto.priceDropThresholdPercent,
+        telegramDigest: dto.telegramDigest,
+      },
+      select: this.publicSelect,
     });
     return { ...user, telegramConfigured: isTelegramConfigured() };
   }

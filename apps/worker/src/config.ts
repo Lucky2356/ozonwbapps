@@ -27,6 +27,16 @@ export const config = {
     // Токен бота от @BotFather; пусто = Telegram-уведомления выключены.
     botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
   },
+  digest: {
+    // Час (0..23, локальное время сервера), когда отправлять дайджест снижений цен.
+    hour: Number(process.env.DIGEST_HOUR ?? 9),
+  },
+  findCheaper: {
+    // Интервал поиска того же товара дешевле на других маркетплейсах, минуты (0 = выключено).
+    intervalMin: Number(process.env.FINDCHEAPER_INTERVAL_MIN ?? 0),
+    // Порог схожести названий для совпадения товара.
+    similarity: Number(process.env.FINDCHEAPER_SIMILARITY ?? 0.5),
+  },
   wb: {
     dest: process.env.WB_DEST ?? '-1257786',
     searchVersion: process.env.WB_SEARCH_VERSION ?? 'v13',

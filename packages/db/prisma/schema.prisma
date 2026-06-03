@@ -17,6 +17,10 @@ model User {
   telegramChatId String?
   /** Одноразовый код привязки Telegram (для команды /start <код> в боте). */
   telegramLinkCode String? @unique
+  /** Порог снижения цены в % для уведомления (когда целевая цена не задана). */
+  priceDropThresholdPercent Int @default(1)
+  /** Дайджест лучших снижений в Telegram: off | daily | weekly. */
+  telegramDigest String @default("off")
   createdAt    DateTime @default(now())
 
   searches        Search[]

@@ -30,9 +30,16 @@ export async function checkTrackedPrice(tp: TrackedWithUser): Promise<boolean> {
   if (price == null) return false;
 
   const prev = tp.lastPrice;
+  // Исторический минимум считаем ДО вставки новой точки.
+  const agg = await prisma.priceHistory.aggregate({
+    where: { trackedProductId: tp.id },
+    _min: { price: true },
+  });
+  const historicalMin = agg._min.price ?? null;
+
   await prisma.priceHistory.create({ data: { trackedProductId: tp.id, price } });
   await prisma.trackedProduct.update({ where: { id: tp.id }, data: { lastPrice: price } });
-  await maybeNotify(tp, prev, price);
+  await maybeNotify(tp, prev, price, historicalMin);
   return true;
 }
 
@@ -71,32 +78,52 @@ export async function checkAllTrackedPrices(): Promise<void> {
 /**
  * Чистое решение, нужно ли уведомление (вынесено для юнит-тестов).
  * - Есть целевая цена: уведомляем при ПЕРВОМ достижении (пересечении) цели сверху вниз.
- * - Целевой цены нет: уведомляем при снижении цены минимум на 1% относительно прошлой.
+ * - Целевой цены нет:
+ *   - новый исторический минимум (price ниже всех прежних) при снижении → 'historical_low';
+ *   - иначе снижение не меньше порога thresholdPercent относительно прошлой → 'price_drop'.
  */
 export function decideNotification(
   prev: number | null,
   price: number,
   target: number | null,
-): 'target_reached' | 'price_drop' | null {
+  thresholdPercent = 1,
+  isHistoricalLow = false,
+): 'target_reached' | 'price_drop' | 'historical_low' | null {
   if (target != null) {
     if (price <= target && (prev == null || prev > target)) return 'target_reached';
     return null;
   }
-  if (prev != null && price < prev * 0.99) return 'price_drop';
+  if (prev == null || price >= prev) return null;
+  if (isHistoricalLow) return 'historical_low';
+  if (price < prev * (1 - thresholdPercent / 100)) return 'price_drop';
   return null;
 }
 
 /** Решает, нужно ли уведомление, и создаёт его (в приложении + в Telegram). */
-async function maybeNotify(tp: TrackedWithUser, prev: number | null, price: number): Promise<void> {
+async function maybeNotify(
+  tp: TrackedWithUser,
+  prev: number | null,
+  price: number,
+  historicalMin: number | null,
+): Promise<void> {
   const target = tp.targetPrice ?? null;
-  const type = decideNotification(prev, price, target);
+  const threshold = tp.user.priceDropThresholdPercent ?? 1;
+  const isHistoricalLow = historicalMin != null && price < historicalMin;
+  const type = decideNotification(prev, price, target, threshold, isHistoricalLow);
   if (!type) return;
 
-  const title = type === 'target_reached' ? 'Цель по цене достигнута' : 'Цена снизилась';
+  const title =
+    type === 'target_reached'
+      ? 'Цель по цене достигнута'
+      : type === 'historical_low'
+        ? 'Исторический минимум цены'
+        : 'Цена снизилась';
   const message =
     type === 'target_reached'
       ? `«${tp.title}» теперь ${fmt(price)} ₽ (цель ${fmt(target as number)} ₽).`
-      : `«${tp.title}» подешевел: ${prev != null ? fmt(prev) : '—'} ₽ → ${fmt(price)} ₽.`;
+      : type === 'historical_low'
+        ? `«${tp.title}» сейчас дешевле, чем когда-либо: ${fmt(price)} ₽${prev != null ? ` (было ${fmt(prev)} ₽)` : ''}.`
+        : `«${tp.title}» подешевел: ${prev != null ? fmt(prev) : '—'} ₽ → ${fmt(price)} ₽.`;
 
   await prisma.notification.create({
     data: {

@@ -43,4 +43,29 @@ describe('decideNotification', () => {
       expect(decideNotification(null, 500, null)).toBeNull();
     });
   });
+
+  describe('пользовательский порог снижения', () => {
+    it('при пороге 5% малое снижение игнорируется', () => {
+      expect(decideNotification(1000, 989, null, 5)).toBeNull();
+    });
+
+    it('при пороге 5% снижение ≥5% уведомляет', () => {
+      expect(decideNotification(1000, 940, null, 5)).toBe('price_drop');
+    });
+  });
+
+  describe('исторический минимум', () => {
+    it('новый минимум при снижении даёт historical_low (даже ниже порога)', () => {
+      expect(decideNotification(1000, 995, null, 5, true)).toBe('historical_low');
+    });
+
+    it('исторический минимум не срабатывает без снижения', () => {
+      expect(decideNotification(1000, 1000, null, 1, true)).toBeNull();
+      expect(decideNotification(1000, 1100, null, 1, true)).toBeNull();
+    });
+
+    it('при целевой цене исторический минимум не перебивает логику цели', () => {
+      expect(decideNotification(2000, 1500, 1000, 1, true)).toBeNull();
+    });
+  });
 });
