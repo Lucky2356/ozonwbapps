@@ -3,6 +3,7 @@ import { api } from './client';
 import { toast } from '../store/toast';
 import type {
   MarketplaceInfo,
+  MarketplaceHealth,
   SearchResultsResponse,
   SearchStatusResponse,
   HistoryItem,
@@ -19,6 +20,21 @@ export function useMarketplaces() {
     queryKey: ['marketplaces'],
     queryFn: async () => (await api.get<MarketplaceInfo[]>('/marketplaces')).data,
     staleTime: 5 * 60_000, // список маркетплейсов меняется редко
+  });
+}
+
+export function useMarketplaceHealth() {
+  return useQuery({
+    queryKey: ['marketplace-health'],
+    queryFn: async () => (await api.get<MarketplaceHealth[]>('/marketplaces/health')).data,
+    staleTime: 60_000,
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (payload: { oldPassword: string; newPassword: string }) =>
+      (await api.post('/auth/change-password', payload)).data,
   });
 }
 

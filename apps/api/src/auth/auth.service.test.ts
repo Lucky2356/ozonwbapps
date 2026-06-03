@@ -14,6 +14,11 @@ function makeService(users: any[] = []) {
         store.push(user);
         return user;
       }),
+      update: vi.fn(async ({ where, data }: any) => {
+        const user = store.find((u) => u.id === where.id || u.email === where.email);
+        if (user) Object.assign(user, data);
+        return user;
+      }),
     },
   };
   const jwt: any = { sign: vi.fn(() => 'fake.jwt.token') };
@@ -44,5 +49,28 @@ describe('AuthService', () => {
     const service = makeService();
     await service.register({ email: 'e@f.com', password: 'secret123' });
     await expect(service.login({ email: 'e@f.com', password: 'wrong' })).rejects.toThrow();
+  });
+
+  describe('смена пароля', () => {
+    it('меняет пароль при верном текущем и позволяет войти с новым', async () => {
+      const service = makeService();
+      const { user } = await service.register({ email: 'g@h.com', password: 'oldpass1' });
+      const res = await service.changePassword(user.id, {
+        oldPassword: 'oldpass1',
+        newPassword: 'newpass2',
+      });
+      expect(res.ok).toBe(true);
+      await expect(service.login({ email: 'g@h.com', password: 'newpass2' })).resolves.toMatchObject({
+        token: 'fake.jwt.token',
+      });
+    });
+
+    it('отклоняет смену при неверном текущем пароле', async () => {
+      const service = makeService();
+      const { user } = await service.register({ email: 'i@j.com', password: 'oldpass1' });
+      await expect(
+        service.changePassword(user.id, { oldPassword: 'wrong', newPassword: 'newpass2' }),
+      ).rejects.toThrow();
+    });
   });
 });

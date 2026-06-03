@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Send, Check, ExternalLink, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Send, Check, ExternalLink, CheckCircle2, ChevronDown, KeyRound, Activity } from 'lucide-react';
 import { useAuth } from '../store/auth';
 import { useTheme } from '../store/theme';
 import {
   useProfile,
   useUpdateProfile,
   useCreateTelegramLink,
+  useChangePassword,
+  useMarketplaceHealth,
 } from '../api/hooks';
+import { marketplaceLabel } from '../lib/format';
 import { toast } from '../store/toast';
 import type { TelegramLink, DigestOption } from '../api/types';
 
@@ -163,6 +166,10 @@ export function SettingsPage() {
 
       <PriceAlertsCard />
 
+      <ChangePasswordCard />
+
+      <ParserHealthCard />
+
       <div className="card p-5">
         <h2 className="mb-2 font-semibold">О выгодности</h2>
         <p className="text-sm text-slate-500">
@@ -246,6 +253,142 @@ function PriceAlertsCard() {
         <p className="text-xs text-amber-600 dark:text-amber-400">
           Чтобы получать дайджест, подключите Telegram выше.
         </p>
+      )}
+    </div>
+  );
+}
+
+/** Извлекает человекочитаемое сообщение об ошибке из ответа axios. */
+function errorMessage(e: unknown, fallback: string): string {
+  const msg = (e as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  if (Array.isArray(msg)) return msg[0] ?? fallback;
+  return msg ?? fallback;
+}
+
+/** Карточка смены пароля. */
+function ChangePasswordCard() {
+  const change = useChangePassword();
+  const [oldPassword, setOld] = useState('');
+  const [newPassword, setNew] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (newPassword.length < 6) {
+      setError('Новый пароль не короче 6 символов');
+      return;
+    }
+    if (newPassword !== confirm) {
+      setError('Новый пароль и подтверждение не совпадают');
+      return;
+    }
+    change.mutate(
+      { oldPassword, newPassword },
+      {
+        onSuccess: () => {
+          toast.success('Пароль изменён');
+          setOld('');
+          setNew('');
+          setConfirm('');
+        },
+        onError: (err) => setError(errorMessage(err, 'Не удалось сменить пароль')),
+      },
+    );
+  };
+
+  return (
+    <form onSubmit={submit} className="card space-y-3 p-5">
+      <h2 className="flex items-center gap-2 font-semibold">
+        <KeyRound className="h-4 w-4 text-slate-500" /> Смена пароля
+      </h2>
+      <input
+        type="password"
+        className="input"
+        placeholder="Текущий пароль"
+        autoComplete="current-password"
+        value={oldPassword}
+        onChange={(e) => setOld(e.target.value)}
+      />
+      <input
+        type="password"
+        className="input"
+        placeholder="Новый пароль"
+        autoComplete="new-password"
+        value={newPassword}
+        onChange={(e) => setNew(e.target.value)}
+      />
+      <input
+        type="password"
+        className="input"
+        placeholder="Повторите новый пароль"
+        autoComplete="new-password"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+      />
+      {error && <p className="text-sm text-rose-500">{error}</p>}
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={change.isPending || !oldPassword || !newPassword}
+      >
+        {change.isPending ? 'Сохраняем…' : 'Сменить пароль'}
+      </button>
+    </form>
+  );
+}
+
+const HEALTH_STYLE: Record<string, { dot: string; label: string }> = {
+  error: { dot: 'bg-rose-500', label: 'ошибка' },
+  warn: { dot: 'bg-amber-500', label: 'предупреждение' },
+  info: { dot: 'bg-emerald-500', label: 'ок' },
+};
+
+/** Карточка состояния парсеров по данным ParserLog (последние 24 часа). */
+function ParserHealthCard() {
+  const { data, isLoading } = useMarketplaceHealth();
+
+  return (
+    <div className="card space-y-3 p-5">
+      <div>
+        <h2 className="flex items-center gap-2 font-semibold">
+          <Activity className="h-4 w-4 text-slate-500" /> Состояние источников
+        </h2>
+        <p className="text-sm text-slate-500">
+          Последняя активность парсеров за 24 часа. Помогает понять, какой маркетплейс «молчит»
+          (часто из-за анти-бот-защиты).
+        </p>
+      </div>
+      {isLoading ? (
+        <p className="text-sm text-slate-400">Загрузка…</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {(data ?? []).map((m) => {
+            const style = m.lastLevel ? HEALTH_STYLE[m.lastLevel] : null;
+            return (
+              <li key={m.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="flex items-center gap-2">
+                  <span
+                    className={'inline-block h-2.5 w-2.5 rounded-full ' + (style?.dot ?? 'bg-slate-300')}
+                  />
+                  {marketplaceLabel(m.id)}
+                  {!m.enabled && <span className="text-xs text-slate-400">(выключен)</span>}
+                </span>
+                <span className="truncate text-right text-xs text-slate-400" title={m.lastMessage ?? ''}>
+                  {m.lastAt
+                    ? `${style?.label ?? 'активность'} · ${new Date(m.lastAt).toLocaleString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}`
+                    : 'нет данных за 24 ч'}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

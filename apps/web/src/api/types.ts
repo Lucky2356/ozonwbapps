@@ -101,6 +101,15 @@ export interface TelegramLink {
   deepLink?: string | null;
 }
 
+export interface MarketplaceHealth {
+  id: string;
+  name: string;
+  enabled: boolean;
+  lastLevel?: 'info' | 'warn' | 'error' | null;
+  lastMessage?: string | null;
+  lastAt?: string | null;
+}
+
 export interface SearchFormValues {
   query: string;
   marketplaces: string[];

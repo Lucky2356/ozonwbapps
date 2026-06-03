@@ -1,8 +1,13 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto, LoginDto } from './dto';
+import { RegisterDto, LoginDto, ChangePasswordDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -43,5 +48,20 @@ export class AuthService {
       token: this.sign(user.id, user.email),
       user: { id: user.id, email: user.email },
     };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('Пользователь не найден');
+    }
+    const ok = await bcrypt.compare(dto.oldPassword, user.passwordHash);
+    if (!ok) {
+      // BadRequest, а не 401 — чтобы фронтовый интерсептор не разлогинил пользователя.
+      throw new BadRequestException('Неверный текущий пароль');
+    }
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    return { ok: true };
   }
 }

@@ -16,3 +16,12 @@ export class LoginDto {
   @IsString()
   password!: string;
 }
+
+export class ChangePasswordDto {
+  @IsString()
+  oldPassword!: string;
+
+  @IsString()
+  @MinLength(6, { message: 'Новый пароль не короче 6 символов' })
+  newPassword!: string;
+}
