@@ -11,6 +11,7 @@ const MARKETPLACE_LABELS: Record<string, string> = {
   wildberries: 'Wildberries',
   yandex_market: 'Яндекс Маркет',
   dns: 'DNS',
+  mvideo: 'М.Видео',
 };
 
 export function marketplaceLabel(id: string): string {
@@ -25,6 +26,10 @@ export function marketplaceColor(id: string): string {
       return 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300';
     case 'yandex_market':
       return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+    case 'dns':
+      return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300';
+    case 'mvideo':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
     default:
       return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
   }

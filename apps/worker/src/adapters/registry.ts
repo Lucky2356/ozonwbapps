@@ -3,6 +3,7 @@ import { WildberriesAdapter } from './wildberries';
 import { OzonAdapter } from './ozon';
 import { YandexMarketAdapter } from './yandexmarket';
 import { DnsAdapter } from './dns';
+import { MVideoAdapter } from './mvideo';
 import { config } from '../config';
 
 /**
@@ -14,6 +15,7 @@ const ALL: MarketplaceAdapter[] = [
   new OzonAdapter(),
   new YandexMarketAdapter(),
   new DnsAdapter(),
+  new MVideoAdapter(),
 ];
 
 const byName = new Map<string, MarketplaceAdapter>(ALL.map((a) => [a.marketplaceName, a]));

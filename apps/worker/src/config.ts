@@ -50,6 +50,12 @@ export const config = {
     headless: process.env.DNS_HEADLESS !== '0',
     timeoutMs: Number(process.env.DNS_TIMEOUT_MS ?? 30000),
   },
+  mvideo: {
+    // У М.Видео анти-бот-защита/капча. По умолчанию headless; на «чистом» RU-IP
+    // надёжнее headed (MV_HEADLESS=0).
+    headless: process.env.MV_HEADLESS !== '0',
+    timeoutMs: Number(process.env.MV_TIMEOUT_MS ?? 30000),
+  },
   scoreWeights: {
     SCORE_WEIGHT_PRICE: process.env.SCORE_WEIGHT_PRICE,
     SCORE_WEIGHT_RATING: process.env.SCORE_WEIGHT_RATING,

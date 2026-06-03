@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Info } from 'lucide-react';
+import { ArrowLeft, Info, LayoutGrid, Scale } from 'lucide-react';
 import {
   useSearchStatus,
   useSearchResults,
@@ -10,6 +10,7 @@ import {
   useAddTracked,
 } from '../api/hooks';
 import { ProductCard } from '../components/ProductCard';
+import { PriceComparison } from '../components/PriceComparison';
 import { TrackDialog } from '../components/TrackDialog';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
 import { SkeletonGrid } from '../components/SkeletonCard';
@@ -32,6 +33,7 @@ export function ResultsPage() {
 
   const [sort, setSort] = useState<SortOption>('best_value');
   const [showLegend, setShowLegend] = useState(false);
+  const [view, setView] = useState<'list' | 'compare'>('list');
   const [trackItem, setTrackItem] = useState<ResultItem | null>(null);
 
   const favByUrl = new Map((favorites.data ?? []).map((f) => [f.productUrl, f.id]));
@@ -163,26 +165,57 @@ export function ResultsPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <button
-          onClick={() => setShowLegend((v) => !v)}
-          className="inline-flex items-center gap-1 text-sm font-medium text-brand"
-        >
-          <Info className="h-4 w-4" /> Что такое балл выгодности?
-        </button>
-        <label className="flex items-center gap-2 text-sm text-slate-500">
-          Сортировка
-          <select
-            className="input w-auto py-1.5"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortOption)}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Переключатель вида: обычный список vs сравнение цен по маркетплейсам. */}
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
+            <button
+              onClick={() => setView('list')}
+              aria-pressed={view === 'list'}
+              className={
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ' +
+                (view === 'list'
+                  ? 'bg-brand text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300')
+              }
+            >
+              <LayoutGrid className="h-4 w-4" /> Списком
+            </button>
+            <button
+              onClick={() => setView('compare')}
+              aria-pressed={view === 'compare'}
+              className={
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ' +
+                (view === 'compare'
+                  ? 'bg-brand text-white'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300')
+              }
+            >
+              <Scale className="h-4 w-4" /> Сравнить цены
+            </button>
+          </div>
+          <button
+            onClick={() => setShowLegend((v) => !v)}
+            className="inline-flex items-center gap-1 text-sm font-medium text-brand"
           >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <Info className="h-4 w-4" /> Что такое балл выгодности?
+          </button>
+        </div>
+        {view === 'list' && (
+          <label className="flex items-center gap-2 text-sm text-slate-500">
+            Сортировка
+            <select
+              className="input w-auto py-1.5"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOption)}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {showLegend && (
@@ -191,18 +224,27 @@ export function ResultsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {sortedItems.map((item) => (
-          <ProductCard
-            key={item.id}
-            item={item}
-            isFavorite={favByUrl.has(item.productUrl)}
-            bestPrice={item.price === minPrice}
-            onToggleFavorite={toggleFavorite}
-            onTrack={(it) => setTrackItem(it)}
-          />
-        ))}
-      </div>
+      {view === 'compare' ? (
+        <PriceComparison
+          items={items}
+          favByUrl={favByUrl}
+          onToggleFavorite={toggleFavorite}
+          onTrack={(it) => setTrackItem(it)}
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {sortedItems.map((item) => (
+            <ProductCard
+              key={item.id}
+              item={item}
+              isFavorite={favByUrl.has(item.productUrl)}
+              bestPrice={item.price === minPrice}
+              onToggleFavorite={toggleFavorite}
+              onTrack={(it) => setTrackItem(it)}
+            />
+          ))}
+        </div>
+      )}
 
       <TrackDialog
         open={trackItem !== null}

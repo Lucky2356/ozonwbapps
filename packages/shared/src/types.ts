@@ -3,7 +3,13 @@
  */
 
 /** Идентификатор маркетплейса. Строка — чтобы легко добавлять новые источники. */
-export type MarketplaceId = 'ozon' | 'wildberries' | 'yandex_market' | 'dns' | (string & {});
+export type MarketplaceId =
+  | 'ozon'
+  | 'wildberries'
+  | 'yandex_market'
+  | 'dns'
+  | 'mvideo'
+  | (string & {});
 
 /** Нормализованное предложение товара с любого маркетплейса. */
 export interface MarketplaceOffer {
