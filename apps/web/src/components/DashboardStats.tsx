@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Heart, Bell, Inbox } from 'lucide-react';
+import { Heart, Bell, Inbox, ChevronRight } from 'lucide-react';
 import { useFavorites, useTracked, useUnreadCount } from '../api/hooks';
 
 /**
@@ -18,33 +18,47 @@ export function DashboardStats() {
   if (favCount === 0 && trackedCount === 0 && unreadCount === 0) return null;
 
   const cards = [
-    { to: '/tracked', label: 'Отслеживается', value: trackedCount, icon: Bell, accent: false },
-    { to: '/favorites', label: 'В избранном', value: favCount, icon: Heart, accent: false },
+    {
+      to: '/tracked',
+      label: 'Отслеживается',
+      value: trackedCount,
+      icon: Bell,
+      tint: 'bg-brand/10 text-brand',
+    },
+    {
+      to: '/favorites',
+      label: 'В избранном',
+      value: favCount,
+      icon: Heart,
+      tint: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300',
+    },
     {
       to: '/notifications',
       label: 'Новых уведомлений',
       value: unreadCount,
       icon: Inbox,
-      accent: unreadCount > 0,
+      tint: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300',
     },
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       {cards.map((c) => (
         <Link
           key={c.to}
           to={c.to}
-          className={
-            'card flex flex-col items-center gap-1 p-4 text-center transition hover:border-brand ' +
-            (c.accent ? 'border-rose-300 dark:border-rose-700/60' : '')
-          }
+          className="card card-hover group flex items-center gap-4 p-4"
         >
-          <c.icon
-            className={'h-5 w-5 ' + (c.accent ? 'text-rose-500' : 'text-brand')}
-          />
-          <span className="text-2xl font-extrabold">{c.value}</span>
-          <span className="text-xs text-slate-500">{c.label}</span>
+          <span className={'flex h-11 w-11 items-center justify-center rounded-xl ' + c.tint}>
+            <c.icon className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-2xl font-extrabold leading-none tracking-tight">
+              {c.value}
+            </span>
+            <span className="mt-1 block text-xs text-slate-500">{c.label}</span>
+          </span>
+          <ChevronRight className="ml-auto h-4 w-4 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-400" />
         </Link>
       ))}
     </div>

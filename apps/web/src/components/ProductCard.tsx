@@ -19,7 +19,7 @@ export function ProductCard({ item, isFavorite, bestPrice, onToggleFavorite, onT
   const [candidateIndex, setCandidateIndex] = useState(0);
   const currentSrc = candidates[candidateIndex];
   return (
-    <div className="card flex flex-col overflow-hidden">
+    <div className="card card-hover flex flex-col overflow-hidden">
       <div className="relative aspect-square w-full bg-slate-100 dark:bg-slate-800">
         {currentSrc ? (
           <img

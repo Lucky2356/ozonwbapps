@@ -36,13 +36,23 @@ export function AuthPage({ mode }: Props) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="card w-full max-w-md p-7">
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <Sparkles className="h-10 w-10 text-brand" />
-          <h1 className="text-2xl font-extrabold">Выгодные предложения</h1>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      {/* Мягкий брендовый фон */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-brand/5 via-transparent to-transparent dark:from-brand/10" />
+      <div
+        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-brand/20 blur-3xl"
+        aria-hidden
+      />
+      <div className="card relative w-full max-w-md p-7 sm:p-8">
+        <div className="mb-7 flex flex-col items-center gap-3 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-white shadow-soft">
+            <Sparkles className="h-6 w-6" />
+          </span>
+          <h1 className="text-2xl font-extrabold tracking-tight">Выгода</h1>
           <p className="text-sm text-slate-500">
-            {isLogin ? 'Войдите, чтобы искать выгодные товары' : 'Создайте аккаунт за минуту'}
+            {isLogin
+              ? 'Войдите, чтобы искать выгодные товары на маркетплейсах'
+              : 'Создайте аккаунт за минуту'}
           </p>
         </div>
 
