@@ -26,6 +26,14 @@ export const config = {
   telegram: {
     // Токен бота от @BotFather; пусто = Telegram-уведомления выключены.
     botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
+    // Прокси для api.telegram.org (в РФ часто недоступен напрямую). Поддерживаются
+    // http(s):// и socks://. Берём TELEGRAM_PROXY, иначе HTTPS_PROXY/ALL_PROXY.
+    proxyUrl:
+      process.env.TELEGRAM_PROXY ||
+      process.env.HTTPS_PROXY ||
+      process.env.https_proxy ||
+      process.env.ALL_PROXY ||
+      '',
   },
   digest: {
     // Час (0..23, локальное время сервера), когда отправлять дайджест снижений цен.

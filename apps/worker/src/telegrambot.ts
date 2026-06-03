@@ -1,7 +1,7 @@
 import { prisma } from '@ozonwb/db';
 import { config } from './config';
 import { logger } from './logger';
-import { sendTelegram } from './notify';
+import { sendTelegram, telegramFetch, describeFetchError } from './notify';
 
 /**
  * Telegram-бот на long polling (getUpdates). Нужен, чтобы:
@@ -36,23 +36,39 @@ export function stopTelegramBot(): void {
 }
 
 async function pollLoop(): Promise<void> {
+  let failures = 0;
   while (running) {
     try {
       const updates = await getUpdates();
+      if (failures > 0) {
+        logger.info('Telegram-бот: связь восстановлена');
+        failures = 0;
+      }
       for (const u of updates) {
         offset = Math.max(offset, u.update_id + 1);
         await handleUpdate(u);
       }
     } catch (e) {
-      logger.warn('Telegram-бот: ошибка опроса', { error: String(e) });
-      await sleep(3000);
+      failures++;
+      // Бэк-офф: 3с, 6с, ... до 60с. Логируем причину не на каждой попытке, чтобы не спамить.
+      const backoff = Math.min(3000 * 2 ** Math.min(failures - 1, 5), 60000);
+      if (failures === 1 || failures % 10 === 0) {
+        logger.warn('Telegram-бот: ошибка опроса', {
+          error: describeFetchError(e),
+          failures,
+          подсказка: config.telegram.proxyUrl
+            ? 'проверьте доступность прокси'
+            : 'api.telegram.org недоступен — задайте TELEGRAM_PROXY',
+        });
+      }
+      await sleep(backoff);
     }
   }
 }
 
 async function getUpdates(): Promise<TgUpdate[]> {
   const url = `https://api.telegram.org/bot${config.telegram.botToken}/getUpdates?timeout=30&offset=${offset}`;
-  const res = await fetch(url);
+  const res = await telegramFetch(url);
   if (!res.ok) throw new Error(`getUpdates ${res.status}`);
   const data = (await res.json()) as { result?: TgUpdate[] };
   return data.result ?? [];
