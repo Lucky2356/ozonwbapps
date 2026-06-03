@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { SearchForm } from '../components/SearchForm';
 import { HowItWorks } from '../components/HowItWorks';
+import { DashboardStats } from '../components/DashboardStats';
 import { useHistory } from '../api/hooks';
 import { marketplaceLabel } from '../lib/format';
 
@@ -18,6 +19,8 @@ export function DashboardPage() {
       </div>
 
       <HowItWorks />
+
+      <DashboardStats />
 
       <SearchForm />
 
