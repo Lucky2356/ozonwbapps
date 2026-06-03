@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host --port 5173"
+    "preview": "vite preview --host --port 5173",
+    "cap:sync": "cap sync",
+    "cap:android": "cap open android",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -23,6 +26,10 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@tauri-apps/cli": "^2.11.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
