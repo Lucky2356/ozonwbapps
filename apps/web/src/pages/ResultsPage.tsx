@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Info, LayoutGrid, Scale, Download, X } from 'lucide-react';
+import { ArrowLeft, Info, LayoutGrid, Scale, Download, X, Heart, Bell } from 'lucide-react';
+import clsx from 'clsx';
 import {
   useSearchStatus,
   useSearchResults,
@@ -279,9 +280,31 @@ export function ResultsPage() {
       ) : view === 'compare' ? (
         <PriceComparison
           items={items}
-          favByUrl={favByUrl}
-          onToggleFavorite={toggleFavorite}
-          onTrack={(it) => setTrackItem(it)}
+          renderActions={(item) => (
+            <>
+              <button
+                onClick={() => toggleFavorite(item)}
+                className="btn-ghost px-2"
+                title={favByUrl.has(item.productUrl) ? 'Убрать из избранного' : 'В избранное'}
+                aria-label={favByUrl.has(item.productUrl) ? 'Убрать из избранного' : 'Добавить в избранное'}
+              >
+                <Heart
+                  className={clsx(
+                    'h-4 w-4',
+                    favByUrl.has(item.productUrl) && 'fill-rose-500 text-rose-500',
+                  )}
+                />
+              </button>
+              <button
+                onClick={() => setTrackItem(item)}
+                className="btn-ghost px-2"
+                title="Отслеживать цену"
+                aria-label="Отслеживать цену товара"
+              >
+                <Bell className="h-4 w-4" />
+              </button>
+            </>
+          )}
         />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
