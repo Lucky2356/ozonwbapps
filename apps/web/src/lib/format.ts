@@ -12,6 +12,8 @@ const MARKETPLACE_LABELS: Record<string, string> = {
   yandex_market: 'Яндекс Маркет',
   dns: 'DNS',
   mvideo: 'М.Видео',
+  citilink: 'Ситилинк',
+  megamarket: 'Мегамаркет',
 };
 
 export function marketplaceLabel(id: string): string {
@@ -30,6 +32,10 @@ export function marketplaceColor(id: string): string {
       return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300';
     case 'mvideo':
       return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+    case 'citilink':
+      return 'bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-300';
+    case 'megamarket':
+      return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
     default:
       return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
   }

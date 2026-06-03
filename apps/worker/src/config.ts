@@ -66,6 +66,16 @@ export const config = {
     headless: process.env.MV_HEADLESS !== '0',
     timeoutMs: Number(process.env.MV_TIMEOUT_MS ?? 30000),
   },
+  citilink: {
+    // Ситилинк: headless по умолчанию; на «чистом» RU-IP надёжнее headed (CL_HEADLESS=0).
+    headless: process.env.CL_HEADLESS !== '0',
+    timeoutMs: Number(process.env.CL_TIMEOUT_MS ?? 30000),
+  },
+  megamarket: {
+    // Мегамаркет: headless по умолчанию; на «чистом» RU-IP надёжнее headed (MM_HEADLESS=0).
+    headless: process.env.MM_HEADLESS !== '0',
+    timeoutMs: Number(process.env.MM_TIMEOUT_MS ?? 30000),
+  },
   scoreWeights: {
     SCORE_WEIGHT_PRICE: process.env.SCORE_WEIGHT_PRICE,
     SCORE_WEIGHT_RATING: process.env.SCORE_WEIGHT_RATING,

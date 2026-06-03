@@ -9,6 +9,8 @@ export type MarketplaceId =
   | 'yandex_market'
   | 'dns'
   | 'mvideo'
+  | 'citilink'
+  | 'megamarket'
   | (string & {});
 
 /** Нормализованное предложение товара с любого маркетплейса. */

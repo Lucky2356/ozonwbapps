@@ -4,6 +4,8 @@ import { OzonAdapter } from './ozon';
 import { YandexMarketAdapter } from './yandexmarket';
 import { DnsAdapter } from './dns';
 import { MVideoAdapter } from './mvideo';
+import { CitilinkAdapter } from './citilink';
+import { MegamarketAdapter } from './megamarket';
 import { config } from '../config';
 
 /**
@@ -16,6 +18,8 @@ const ALL: MarketplaceAdapter[] = [
   new YandexMarketAdapter(),
   new DnsAdapter(),
   new MVideoAdapter(),
+  new CitilinkAdapter(),
+  new MegamarketAdapter(),
 ];
 
 const byName = new Map<string, MarketplaceAdapter>(ALL.map((a) => [a.marketplaceName, a]));

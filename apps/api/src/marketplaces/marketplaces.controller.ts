@@ -9,6 +9,8 @@ const CATALOG: { id: string; name: string }[] = [
   { id: 'yandex_market', name: 'Яндекс Маркет' },
   { id: 'dns', name: 'DNS' },
   { id: 'mvideo', name: 'М.Видео' },
+  { id: 'citilink', name: 'Ситилинк' },
+  { id: 'megamarket', name: 'Мегамаркет' },
 ];
 
 @Controller('marketplaces')
