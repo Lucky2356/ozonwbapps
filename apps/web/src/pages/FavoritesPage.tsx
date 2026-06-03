@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ExternalLink, Trash2, Star } from 'lucide-react';
+import { ExternalLink, Trash2, Star, Download } from 'lucide-react';
 import { useFavorites, useRemoveFavorite } from '../api/hooks';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { formatPrice, marketplaceLabel } from '../lib/format';
+import { downloadCsv, favoritesToCsv } from '../lib/export';
 import { toast } from '../store/toast';
 
 export function FavoritesPage() {
@@ -24,9 +25,23 @@ export function FavoritesPage() {
     setPendingId(null);
   };
 
+  const exportCsv = () => {
+    downloadCsv('избранное', favoritesToCsv(data));
+    toast.success('Файл CSV скачан');
+  };
+
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold">Избранное</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">Избранное</h1>
+        <button
+          onClick={exportCsv}
+          className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-brand"
+          aria-label="Скачать избранное в CSV"
+        >
+          <Download className="h-4 w-4" /> Скачать CSV
+        </button>
+      </div>
       {data.map((f) => (
         <div key={f.id} className="card flex items-center gap-3 p-3">
           <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">

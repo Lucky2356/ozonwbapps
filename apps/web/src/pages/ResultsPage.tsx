@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Info, LayoutGrid, Scale } from 'lucide-react';
+import { ArrowLeft, Info, LayoutGrid, Scale, Download } from 'lucide-react';
 import {
   useSearchStatus,
   useSearchResults,
@@ -17,6 +17,7 @@ import { SkeletonGrid } from '../components/SkeletonCard';
 import { ScoreLegend } from '../components/ScoreLegend';
 import { marketplaceColor, marketplaceLabel } from '../lib/format';
 import { SORT_OPTIONS, sortResults } from '../lib/sort';
+import { downloadCsv, resultsToCsv, safeFileName } from '../lib/export';
 import { toast } from '../store/toast';
 import type { ResultItem, SortOption } from '../api/types';
 
@@ -64,6 +65,13 @@ export function ResultsPage() {
         { onSuccess: () => toast.success('Добавлено в избранное') },
       );
     }
+  };
+
+  const exportCsv = () => {
+    if (items.length === 0) return;
+    const query = status.data?.query ?? 'результаты';
+    downloadCsv(`${safeFileName(query)}_предложения`, resultsToCsv(sortedItems));
+    toast.success('Файл CSV скачан');
   };
 
   const confirmTrack = (targetPrice: number | null) => {
@@ -198,6 +206,13 @@ export function ResultsPage() {
             className="inline-flex items-center gap-1 text-sm font-medium text-brand"
           >
             <Info className="h-4 w-4" /> Что такое балл выгодности?
+          </button>
+          <button
+            onClick={exportCsv}
+            className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-brand"
+            aria-label="Скачать результаты в CSV"
+          >
+            <Download className="h-4 w-4" /> Скачать CSV
           </button>
         </div>
         {view === 'list' && (
