@@ -74,7 +74,7 @@ export interface TrackedProduct {
 
 export interface Notification {
   id: string;
-  type: 'price_drop' | 'target_reached' | string;
+  type: 'price_drop' | 'target_reached' | 'cheaper_found' | 'historical_low' | string;
   title: string;
   message: string;
   trackedProductId?: string | null;

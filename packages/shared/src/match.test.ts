@@ -3,6 +3,7 @@ import {
   tokenizeTitle,
   titleSimilarity,
   groupOffers,
+  searchQueryFromTitle,
   MatchableOffer,
 } from './match';
 
@@ -50,6 +51,21 @@ describe('titleSimilarity', () => {
 function offer(p: Partial<MatchableOffer> & { id: string; title: string; price: number; marketplace: string }): MatchableOffer {
   return p;
 }
+
+describe('searchQueryFromTitle', () => {
+  it('берёт первые значимые токены без шума', () => {
+    const q = searchQueryFromTitle('Смартфон Samsung Galaxy A52 128GB Чёрный для России', 4);
+    expect(q).toBe('смартфон samsung galaxy a52');
+  });
+
+  it('ограничивает число токенов', () => {
+    expect(searchQueryFromTitle('iPhone 13 Pro Max 256 ГБ', 3)).toBe('iphone 13 pro');
+  });
+
+  it('пустое/мусорное название → пустая строка', () => {
+    expect(searchQueryFromTitle('!!!')).toBe('');
+  });
+});
 
 describe('groupOffers', () => {
   it('объединяет один товар с разных маркетплейсов в группу', () => {

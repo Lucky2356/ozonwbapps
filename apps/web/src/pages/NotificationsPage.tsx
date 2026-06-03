@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { ExternalLink, BellOff, CheckCheck, TrendingDown, Target, Trash2, X } from 'lucide-react';
+import {
+  ExternalLink,
+  BellOff,
+  CheckCheck,
+  TrendingDown,
+  Target,
+  Trash2,
+  X,
+  ArrowLeftRight,
+  Award,
+} from 'lucide-react';
 import clsx from 'clsx';
 import {
   useNotifications,
@@ -20,6 +30,20 @@ function formatWhen(iso: string): string {
   });
 }
 
+/** Иконка и цвет под тип уведомления. */
+function visual(type: string): { Icon: typeof Target; color: string } {
+  switch (type) {
+    case 'target_reached':
+      return { Icon: Target, color: 'text-emerald-500' };
+    case 'cheaper_found':
+      return { Icon: ArrowLeftRight, color: 'text-violet-500' };
+    case 'historical_low':
+      return { Icon: Award, color: 'text-amber-500' };
+    default:
+      return { Icon: TrendingDown, color: 'text-blue-500' };
+  }
+}
+
 export function NotificationsPage() {
   const { data, isLoading, isError } = useNotifications();
   const markRead = useMarkNotificationRead();
@@ -32,7 +56,7 @@ export function NotificationsPage() {
   if (isError) return <ErrorState />;
   if (!data || data.length === 0)
     return (
-      <EmptyState text="Уведомлений пока нет. Они появятся, когда цена отслеживаемого товара снизится или достигнет цели." />
+      <EmptyState text="Уведомлений пока нет. Они появятся при снижении цены, достижении цели, новом историческом минимуме или когда товар найдётся дешевле на другом маркетплейсе." />
     );
 
   const hasUnread = data.some((n) => !n.read);
@@ -54,7 +78,7 @@ export function NotificationsPage() {
       </div>
 
       {data.map((n) => {
-        const Icon = n.type === 'target_reached' ? Target : TrendingDown;
+        const { Icon, color } = visual(n.type);
         return (
           <div
             key={n.id}
@@ -63,12 +87,7 @@ export function NotificationsPage() {
               !n.read && 'border-l-4 border-l-brand',
             )}
           >
-            <Icon
-              className={clsx(
-                'mt-0.5 h-5 w-5 shrink-0',
-                n.type === 'target_reached' ? 'text-emerald-500' : 'text-blue-500',
-              )}
-            />
+            <Icon className={clsx('mt-0.5 h-5 w-5 shrink-0', color)} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <p className="font-medium">{n.title}</p>

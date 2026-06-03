@@ -60,6 +60,14 @@ export function tokenizeTitle(title: string): string[] {
   return tokens;
 }
 
+/**
+ * Строит короткий поисковый запрос из названия товара — для кросс-поиска того же товара
+ * на других маркетплейсах. Берёт первые значимые токены (бренд/модель/числа), отбрасывая шум.
+ */
+export function searchQueryFromTitle(title: string, maxTokens = 5): string {
+  return tokenizeTitle(title).slice(0, maxTokens).join(' ');
+}
+
 /** Все числовые подстроки названия (объём памяти, размер, диагональ и т.п.). */
 function numericTokens(title: string): Set<string> {
   const matches = title.toLowerCase().match(/\d+/g);

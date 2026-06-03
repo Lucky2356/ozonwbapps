@@ -6,6 +6,7 @@ import { processSearch } from './processor';
 import { closeBrowser } from './adapters/browser';
 import { checkAllTrackedPrices, checkTrackedPriceById } from './pricecheck';
 import { sendDigests } from './digest';
+import { findCheaperAll } from './findcheaper';
 import { startTelegramBot, stopTelegramBot } from './telegrambot';
 
 const QUEUE_NAME = 'search';
@@ -95,6 +96,23 @@ function scheduleDigests() {
 }
 scheduleDigests();
 
+// --- Cron «найти дешевле» на других маркетплейсах ---
+let findCheaperTimer: ReturnType<typeof setInterval> | undefined;
+function scheduleFindCheaper() {
+  const intervalMin = config.findCheaper.intervalMin;
+  if (intervalMin <= 0) {
+    logger.info('Найти дешевле: cron выключен (FINDCHEAPER_INTERVAL_MIN=0)');
+    return;
+  }
+  const run = () =>
+    findCheaperAll().catch((e) => logger.error('Найти дешевле: сбой прогона', { error: String(e) }));
+  // Стартовая задержка как у проверки цен, чтобы не нагружать сразу при старте.
+  setTimeout(run, config.priceCheck.initialDelaySec * 1000);
+  findCheaperTimer = setInterval(run, intervalMin * 60 * 1000);
+  logger.info('Найти дешевле: cron запланирован', { intervalMin });
+}
+scheduleFindCheaper();
+
 // --- Telegram-бот (привязка аккаунта + команды) ---
 startTelegramBot();
 
@@ -102,6 +120,7 @@ async function shutdown() {
   logger.info('Остановка воркера...');
   if (priceCheckTimer) clearInterval(priceCheckTimer);
   if (digestTimer) clearInterval(digestTimer);
+  if (findCheaperTimer) clearInterval(findCheaperTimer);
   stopTelegramBot();
   await worker.close();
   await priceCheckWorker.close();
