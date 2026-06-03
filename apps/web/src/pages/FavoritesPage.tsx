@@ -1,18 +1,40 @@
 import { useMemo, useState } from 'react';
-import { ExternalLink, Trash2, Star, Download, LayoutGrid, Scale } from 'lucide-react';
-import { useFavorites, useRemoveFavorite } from '../api/hooks';
+import { ExternalLink, Trash2, Star, Download, LayoutGrid, Scale, Bell, BellRing } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useFavorites, useRemoveFavorite, useTracked, useAddTracked } from '../api/hooks';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PriceComparison, type ComparisonItem } from '../components/PriceComparison';
 import { formatPrice, marketplaceLabel } from '../lib/format';
 import { downloadCsv, favoritesToCsv } from '../lib/export';
 import { toast } from '../store/toast';
+import type { Favorite } from '../api/types';
 
 export function FavoritesPage() {
   const { data, isLoading, isError } = useFavorites();
+  const tracked = useTracked();
+  const addTracked = useAddTracked();
   const remove = useRemoveFavorite();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'compare'>('list');
+
+  const trackedUrls = useMemo(
+    () => new Set((tracked.data ?? []).map((t) => t.productUrl)),
+    [tracked.data],
+  );
+
+  const startTracking = (f: Favorite) => {
+    if (trackedUrls.has(f.productUrl)) return;
+    addTracked.mutate(
+      {
+        marketplace: f.marketplace,
+        title: f.title,
+        productUrl: f.productUrl,
+        currentPrice: f.price,
+      },
+      { onSuccess: () => toast.success('Товар добавлен в отслеживаемые') },
+    );
+  };
 
   // Маппинг избранного в элементы сравнения (reviewsCount: null → undefined).
   const comparisonItems = useMemo<ComparisonItem[]>(
@@ -90,14 +112,45 @@ export function FavoritesPage() {
           items={comparisonItems}
           emptyHint="Среди избранного нет одинаковых товаров с разных маркетплейсов для сравнения."
           renderActions={(item) => (
-            <button
-              onClick={() => setPendingId(item.id)}
-              className="btn-ghost px-2 text-rose-500"
-              title="Убрать из избранного"
-              aria-label="Убрать из избранного"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            <>
+              {trackedUrls.has(item.productUrl) ? (
+                <Link
+                  to="/tracked"
+                  className="btn-ghost px-2 text-brand"
+                  title="Уже отслеживается"
+                  aria-label="Уже отслеживается"
+                >
+                  <BellRing className="h-4 w-4" />
+                </Link>
+              ) : (
+                <button
+                  onClick={() =>
+                    addTracked.mutate(
+                      {
+                        marketplace: item.marketplace,
+                        title: item.title,
+                        productUrl: item.productUrl,
+                        currentPrice: item.price,
+                      },
+                      { onSuccess: () => toast.success('Товар добавлен в отслеживаемые') },
+                    )
+                  }
+                  className="btn-ghost px-2"
+                  title="Следить за ценой"
+                  aria-label="Следить за ценой"
+                >
+                  <Bell className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                onClick={() => setPendingId(item.id)}
+                className="btn-ghost px-2 text-rose-500"
+                title="Убрать из избранного"
+                aria-label="Убрать из избранного"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
           )}
         />
       ) : (
@@ -117,6 +170,25 @@ export function FavoritesPage() {
                 )}
               </p>
             </div>
+            {trackedUrls.has(f.productUrl) ? (
+              <Link
+                to="/tracked"
+                className="btn-ghost px-2.5 text-brand"
+                title="Уже отслеживается — открыть отслеживание"
+                aria-label="Уже отслеживается"
+              >
+                <BellRing className="h-4 w-4" />
+              </Link>
+            ) : (
+              <button
+                onClick={() => startTracking(f)}
+                className="btn-ghost px-2.5"
+                title="Следить за ценой"
+                aria-label="Следить за ценой"
+              >
+                <Bell className="h-4 w-4" />
+              </button>
+            )}
             <a
               href={f.productUrl}
               target="_blank"
