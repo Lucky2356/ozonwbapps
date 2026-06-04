@@ -26,9 +26,9 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
-    "@capacitor/android": "^6.2.1",
-    "@capacitor/cli": "^6.2.1",
-    "@capacitor/core": "^6.2.1",
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "@tauri-apps/cli": "^2.11.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",

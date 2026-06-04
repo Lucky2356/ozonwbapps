@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import express from 'express';
+import helmet from 'helmet';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
@@ -8,6 +10,10 @@ async function bootstrap() {
   // Адаптер передаём явно: это надёжнее авто-загрузки ядром (которая ломается,
   // если платформа размещена не там, где @nestjs/core в монорепо-hoisting).
   const app = await NestFactory.create(AppModule, new ExpressAdapter());
+
+  // Заголовки безопасности и ограничение размера тела запроса.
+  app.use(helmet());
+  app.use(express.json({ limit: '64kb' }));
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(

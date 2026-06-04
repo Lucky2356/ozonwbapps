@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
   IsIn,
@@ -9,6 +10,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { SortOption } from '@ozonwb/shared';
@@ -40,11 +42,13 @@ const SORTS: SortOption[] = ['best_value', 'price_asc', 'price_desc', 'rating', 
 
 export class CreateSearchDto {
   @IsString()
+  @MinLength(1)
   @MaxLength(200)
   query!: string;
 
   @IsArray()
   @ArrayNotEmpty({ message: 'Выберите хотя бы один маркетплейс' })
+  @ArrayMaxSize(20)
   @IsString({ each: true })
   marketplaces!: string[];
 
