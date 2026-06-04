@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Info, LayoutGrid, Scale, Download, X, Heart, Bell } from 'lucide-react';
 import clsx from 'clsx';
@@ -37,7 +37,11 @@ export function ResultsPage() {
   const [showLegend, setShowLegend] = useState(false);
   const [view, setView] = useState<'list' | 'compare'>('list');
   const [filterText, setFilterText] = useState('');
+  const [visibleCount, setVisibleCount] = useState(24);
   const [trackItem, setTrackItem] = useState<ResultItem | null>(null);
+
+  // Сбрасываем пагинацию при смене фильтра/сортировки.
+  useEffect(() => setVisibleCount(24), [filterText, sort]);
 
   const favByUrl = new Map((favorites.data ?? []).map((f) => [f.productUrl, f.id]));
 
@@ -307,18 +311,27 @@ export function ResultsPage() {
           )}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {sortedItems.map((item) => (
-            <ProductCard
-              key={item.id}
-              item={item}
-              isFavorite={favByUrl.has(item.productUrl)}
-              bestPrice={item.price === minPrice}
-              onToggleFavorite={toggleFavorite}
-              onTrack={(it) => setTrackItem(it)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {sortedItems.slice(0, visibleCount).map((item) => (
+              <ProductCard
+                key={item.id}
+                item={item}
+                isFavorite={favByUrl.has(item.productUrl)}
+                bestPrice={item.price === minPrice}
+                onToggleFavorite={toggleFavorite}
+                onTrack={(it) => setTrackItem(it)}
+              />
+            ))}
+          </div>
+          {sortedItems.length > visibleCount && (
+            <div className="mt-5 text-center">
+              <button onClick={() => setVisibleCount((n) => n + 24)} className="btn-outline">
+                Показать ещё ({sortedItems.length - visibleCount})
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <TrackDialog

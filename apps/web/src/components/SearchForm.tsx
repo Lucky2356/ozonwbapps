@@ -5,7 +5,7 @@ import { useMarketplaces, useCreateSearch } from '../api/hooks';
 import { MarketplaceSelector } from './MarketplaceSelector';
 import { FiltersPanel } from './FiltersPanel';
 import { LoadingState, ErrorState } from './states';
-import { loadPrefs, savePrefs } from '../lib/prefs';
+import { loadPrefs, savePrefs, loadRecentQueries, pushRecentQuery } from '../lib/prefs';
 import type { SearchFormValues } from '../api/types';
 
 const DEFAULT_VALUES: SearchFormValues = {
@@ -30,6 +30,7 @@ export function SearchForm() {
     ...loadPrefs(),
   }));
   const [error, setError] = useState<string | null>(null);
+  const [recent, setRecent] = useState<string[]>(() => loadRecentQueries());
 
   // По умолчанию выбираем все включённые маркетплейсы.
   const enabledIds = (marketplaces ?? []).filter((m) => m.enabled).map((m) => m.id);
@@ -50,6 +51,7 @@ export function SearchForm() {
     }
     try {
       savePrefs({ ...values, marketplaces: selected });
+      pushRecentQuery(values.query);
       const res = await createSearch.mutateAsync({ ...values, marketplaces: selected });
       navigate(`/results/${res.searchId}`);
     } catch {
@@ -71,14 +73,39 @@ export function SearchForm() {
           onChange={(e) => patch({ query: e.target.value })}
           autoFocus
         />
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        {recent.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-slate-400">Недавнее:</span>
+            {recent.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => patch({ query: q })}
+                className="chip bg-brand/10 text-brand transition hover:bg-brand/20"
+              >
+                {q}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem('ozonwb:recent-queries');
+                setRecent([]);
+              }}
+              className="text-xs text-slate-400 underline-offset-2 hover:underline"
+            >
+              очистить
+            </button>
+          </div>
+        )}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-slate-400">Примеры:</span>
           {EXAMPLE_QUERIES.map((q) => (
             <button
               key={q}
               type="button"
               onClick={() => patch({ query: q })}
-              className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="chip bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
             >
               {q}
             </button>

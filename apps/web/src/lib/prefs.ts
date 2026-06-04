@@ -33,6 +33,36 @@ export function loadPrefs(): Partial<SearchPrefs> | null {
   }
 }
 
+const RECENT_KEY = 'ozonwb:recent-queries';
+const RECENT_MAX = 6;
+
+/** Последние поисковые запросы (для быстрых чипов на главной). */
+export function loadRecentQueries(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((q): q is string => typeof q === 'string').slice(0, RECENT_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Добавляет запрос в историю (без дублей, последний — первым, максимум RECENT_MAX). */
+export function pushRecentQuery(query: string): void {
+  const q = query.trim();
+  if (!q) return;
+  try {
+    const list = [q, ...loadRecentQueries().filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(
+      0,
+      RECENT_MAX,
+    );
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+  } catch {
+    /* localStorage недоступен — не критично */
+  }
+}
+
 export function savePrefs(values: SearchFormValues): void {
   try {
     const prefs: SearchPrefs = {
