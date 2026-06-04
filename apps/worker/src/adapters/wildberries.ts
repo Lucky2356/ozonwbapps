@@ -306,6 +306,7 @@ export class WildberriesAdapter implements MarketplaceAdapter {
       if (products[0] && !WildberriesAdapter.loggedSample) {
         WildberriesAdapter.loggedSample = true;
         const s = products[0];
+        const sz = Array.isArray(s?.sizes) ? s.sizes[0] : undefined;
         logger.info('WB: структура товара', {
           keys: Object.keys(s),
           reviewRating: s.reviewRating,
@@ -314,6 +315,11 @@ export class WildberriesAdapter implements MarketplaceAdapter {
           feedbacks: s.feedbacks,
           nmFeedbacks: s.nmFeedbacks,
           pics: s.pics,
+          // Полный ценовой объект — для разбора расхождения цены выдачи и страницы товара.
+          // basic — до скидки, product — итог; цена «с WB-кошельком» считается на сайте отдельно.
+          priceObject: sz?.price,
+          priceU: s.priceU,
+          salePriceU: s.salePriceU,
         });
       }
       for (const p of products) {

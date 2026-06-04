@@ -111,12 +111,21 @@ export class OzonAdapter implements MarketplaceAdapter {
     }
   }
 
-  /** Прокрутка страницы для ленивой подгрузки товаров. */
+  /**
+   * Прокрутка страницы для ленивой подгрузки товаров. Ozon грузит выдачу постранично по мере
+   * скролла (каждая подгрузка — новый composer-api ответ, который мы перехватываем), поэтому
+   * скроллим побольше и ждём подгрузки, чтобы собрать не только первый экран.
+   */
   private async autoScroll(page: Page): Promise<void> {
     try {
-      for (let i = 0; i < 6; i++) {
+      let lastHeight = 0;
+      for (let i = 0; i < 12; i++) {
         await page.evaluate(() => window.scrollBy(0, document.body.scrollHeight));
-        await page.waitForTimeout(900);
+        await page.waitForTimeout(1000);
+        const h = await page.evaluate(() => document.body.scrollHeight).catch(() => 0);
+        // Если высота перестала расти на двух итерациях подряд — выходим раньше.
+        if (h && h === lastHeight && i > 3) break;
+        lastHeight = h;
       }
     } catch {
       /* ignore */
