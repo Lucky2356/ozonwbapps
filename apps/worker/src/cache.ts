@@ -4,6 +4,8 @@ import { MarketplaceOffer } from '@ozonwb/shared';
 import { config } from './config';
 import { logger } from './logger';
 
+export { isStale } from './cache-policy';
+
 const redis = new Redis({
   host: config.redis.host,
   port: config.redis.port,
@@ -20,13 +22,20 @@ function key(marketplace: string, query: string): string {
   return `parser:${marketplace}:${query.trim().toLowerCase()}`;
 }
 
-export async function getCached(
-  marketplace: string,
-  query: string,
-): Promise<MarketplaceOffer[] | null> {
+export interface CachedEntry {
+  offers: MarketplaceOffer[];
+  /** Возраст записи в миллисекундах. */
+  ageMs: number;
+}
+
+export async function getCached(marketplace: string, query: string): Promise<CachedEntry | null> {
   try {
     const raw = await redis.get(key(marketplace, query));
-    return raw ? (JSON.parse(raw) as MarketplaceOffer[]) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Совместимость со старым форматом (просто массив) — считаем устаревшим.
+    if (Array.isArray(parsed)) return { offers: parsed as MarketplaceOffer[], ageMs: Number.MAX_SAFE_INTEGER };
+    return { offers: (parsed.offers ?? []) as MarketplaceOffer[], ageMs: Date.now() - (parsed.ts ?? 0) };
   } catch (e) {
     logger.warn('Ошибка чтения кеша', { error: String(e) });
     return null;
@@ -39,7 +48,8 @@ export async function setCached(
   offers: MarketplaceOffer[],
 ): Promise<void> {
   try {
-    await redis.set(key(marketplace, query), JSON.stringify(offers), 'EX', config.cacheTtlSeconds);
+    const payload = JSON.stringify({ offers, ts: Date.now() });
+    await redis.set(key(marketplace, query), payload, 'EX', config.cacheTtlSeconds);
   } catch (e) {
     logger.warn('Ошибка записи кеша', { error: String(e) });
   }

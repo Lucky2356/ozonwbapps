@@ -2,7 +2,7 @@ import { Page } from 'playwright';
 import { MarketplaceOffer, SearchParams } from '@ozonwb/shared';
 import { MarketplaceAdapter } from './types';
 import { applyFilters } from './base';
-import { getBrowser, REALISTIC_UA } from './browser';
+import { createParserContext } from './browser';
 import { config } from '../config';
 import { logger } from '../logger';
 
@@ -28,12 +28,7 @@ export class OzonAdapter implements MarketplaceAdapter {
     const composerBodies: string[] = [];
     let context;
     try {
-      const browser = await getBrowser();
-      context = await browser.newContext({
-        locale: 'ru-RU',
-        viewport: { width: 1366, height: 900 },
-        userAgent: REALISTIC_UA,
-      });
+      context = await createParserContext();
       const page = await context.newPage();
 
       // Собираем JSON-ответы Ozon с результатами поиска.
@@ -85,12 +80,7 @@ export class OzonAdapter implements MarketplaceAdapter {
     if (!config.ozon.enabled) return null;
     let context;
     try {
-      const browser = await getBrowser();
-      context = await browser.newContext({
-        locale: 'ru-RU',
-        viewport: { width: 1366, height: 900 },
-        userAgent: REALISTIC_UA,
-      });
+      context = await createParserContext();
       const page = await context.newPage();
       await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.ozon.timeoutMs });
       await page.waitForSelector('[data-widget="webPrice"]', { timeout: 12000 }).catch(() => undefined);

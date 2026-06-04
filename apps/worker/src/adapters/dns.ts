@@ -2,7 +2,7 @@ import { Page } from 'playwright';
 import { MarketplaceOffer, SearchParams } from '@ozonwb/shared';
 import { MarketplaceAdapter } from './types';
 import { applyFilters } from './base';
-import { getBrowser, REALISTIC_UA } from './browser';
+import { createParserContext } from './browser';
 import { extractProductsFromDom } from './domscrape';
 import { config } from '../config';
 import { logger } from '../logger';
@@ -24,12 +24,7 @@ export class DnsAdapter implements MarketplaceAdapter {
     const url = `https://www.dns-shop.ru/search/?q=${encodeURIComponent(params.query)}`;
     let context;
     try {
-      const browser = await getBrowser(config.dns.headless);
-      context = await browser.newContext({
-        locale: 'ru-RU',
-        viewport: { width: 1366, height: 900 },
-        userAgent: REALISTIC_UA,
-      });
+      context = await createParserContext(config.dns.headless);
       const page = await context.newPage();
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: config.dns.timeoutMs });
 
@@ -77,12 +72,7 @@ export class DnsAdapter implements MarketplaceAdapter {
   async fetchProductPrice(productUrl: string): Promise<number | null> {
     let context;
     try {
-      const browser = await getBrowser(config.dns.headless);
-      context = await browser.newContext({
-        locale: 'ru-RU',
-        viewport: { width: 1366, height: 900 },
-        userAgent: REALISTIC_UA,
-      });
+      context = await createParserContext(config.dns.headless);
       const page = await context.newPage();
       await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.dns.timeoutMs });
       await page

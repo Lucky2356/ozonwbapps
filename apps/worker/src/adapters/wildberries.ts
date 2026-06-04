@@ -2,7 +2,7 @@ import { Page } from 'playwright';
 import { MarketplaceOffer, SearchParams } from '@ozonwb/shared';
 import { MarketplaceAdapter } from './types';
 import { applyFilters, num } from './base';
-import { getBrowser, REALISTIC_UA } from './browser';
+import { createParserContext } from './browser';
 import { config } from '../config';
 import { logger } from '../logger';
 
@@ -105,12 +105,7 @@ export class WildberriesAdapter implements MarketplaceAdapter {
     let context;
     try {
       // ВАЖНО: WB отдаёт товары только обычному (не-headless) браузеру.
-      const browser = await getBrowser(config.wb.headless);
-      context = await browser.newContext({
-        locale: 'ru-RU',
-        viewport: { width: 1366, height: 900 },
-        userAgent: REALISTIC_UA,
-      });
+      context = await createParserContext(config.wb.headless);
       const page = await context.newPage();
 
       // Перехватываем ЛЮБЫЕ ответы *.wb.ru с товарами — именно так сама страница грузит каталог
@@ -171,12 +166,7 @@ export class WildberriesAdapter implements MarketplaceAdapter {
   async fetchProductPrice(productUrl: string): Promise<number | null> {
     let context;
     try {
-      const browser = await getBrowser(config.wb.headless);
-      context = await browser.newContext({
-        locale: 'ru-RU',
-        viewport: { width: 1366, height: 900 },
-        userAgent: REALISTIC_UA,
-      });
+      context = await createParserContext(config.wb.headless);
       const page = await context.newPage();
       await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page

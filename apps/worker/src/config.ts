@@ -15,6 +15,8 @@ export const config = {
     .map((s) => s.trim())
     .filter(Boolean),
   cacheTtlSeconds: Number(process.env.PARSER_CACHE_TTL ?? 900),
+  // «Мягкий» TTL: кэш старше — отдаём сразу, но обновляем в фоне (stale-while-revalidate).
+  cacheSoftTtlSeconds: Number(process.env.PARSER_CACHE_SOFT_TTL ?? 300),
   maxItems: Number(process.env.PARSER_MAX_ITEMS ?? 60),
   requestDelayMs: Number(process.env.PARSER_REQUEST_DELAY_MS ?? 800),
   priceCheck: {

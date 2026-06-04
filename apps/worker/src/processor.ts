@@ -8,9 +8,10 @@ import {
   loadWeightsFromEnv,
 } from '@ozonwb/shared';
 import { resolveAdapters } from './adapters/registry';
-import { dedupe } from './adapters/base';
-import { getCached, setCached } from './cache';
+import { dedupe, applyFilters } from './adapters/base';
+import { getCached, setCached, isStale } from './cache';
 import { getLimiter } from './ratelimit';
+import type { MarketplaceAdapter } from './adapters/types';
 import { config } from './config';
 import { logger } from './logger';
 
@@ -34,10 +35,16 @@ async function runAdapter(
 
   const cached = await getCached(marketplace, params.query);
   if (cached) {
-    logger.info('Кеш-хит', { marketplace, query: params.query, count: cached.length });
+    logger.info('Кеш-хит', {
+      marketplace,
+      query: params.query,
+      count: cached.offers.length,
+      stale: isStale(cached.ageMs),
+    });
+    // Устаревший кэш отдаём сразу, но обновляем в фоне (stale-while-revalidate).
+    if (isStale(cached.ageMs)) refreshInBackground(adapter, marketplace, params);
     // Фильтры применяем к кешу заново (они могли измениться).
-    const { applyFilters } = await import('./adapters/base');
-    return applyFilters(cached, params.filters);
+    return applyFilters(cached.offers, params.filters);
   }
 
   try {
@@ -53,6 +60,21 @@ async function runAdapter(
     await parserLog(marketplace, searchId, 'error', String(e));
     return [];
   }
+}
+
+/** Фоновое обновление кэша (не блокирует ответ). Ошибки гасятся. */
+function refreshInBackground(adapter: MarketplaceAdapter, marketplace: string, params: SearchParams): void {
+  void (async () => {
+    try {
+      const offers = await getLimiter(marketplace).schedule(() => adapter.search(params));
+      if (offers.length > 0) {
+        await setCached(marketplace, params.query, offers);
+        logger.info('Кэш обновлён в фоне', { marketplace, count: offers.length });
+      }
+    } catch (e) {
+      logger.warn('Фоновое обновление кэша не удалось', { marketplace, error: String(e) });
+    }
+  })();
 }
 
 /** Основная обработка поисковой задачи. */
