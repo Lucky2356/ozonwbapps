@@ -232,7 +232,7 @@ export class OzonAdapter implements MarketplaceAdapter {
   }
 
   private parsePriceText(text: string): number | undefined {
-    const digits = (text.match(/\d[\d\s ]*/g) || []).join('').replace(/\D/g, '');
+    const digits = (text.match(/\d[\d\s]*/g) || []).join('').replace(/\D/g, '');
     const n = Number(digits);
     return Number.isFinite(n) && n > 0 ? n : undefined;
   }
@@ -255,12 +255,21 @@ export class OzonAdapter implements MarketplaceAdapter {
     const prices = priceTexts.filter((n): n is number => typeof n === 'number');
     let price: number | undefined;
     let oldPrice: number | undefined;
+    let priceWithCard: number | undefined;
     if (prices.length === 1) {
       price = prices[0];
-    } else if (prices.length >= 2) {
+    } else {
       const uniq = [...new Set(prices)].sort((a, b) => a - b);
-      price = uniq[0];
-      oldPrice = uniq[uniq.length - 1] > uniq[0] ? uniq[uniq.length - 1] : undefined;
+      if (uniq.length >= 3) {
+        // Три ценника: [с Ozon Картой, обычная, старая]. Основная — обычная (как на странице),
+        // самая низкая — «с картой» (показываем отдельно), самая высокая — зачёркнутая.
+        priceWithCard = uniq[0];
+        price = uniq[1];
+        oldPrice = uniq[uniq.length - 1] > price ? uniq[uniq.length - 1] : undefined;
+      } else {
+        price = uniq[0];
+        oldPrice = uniq[1] > uniq[0] ? uniq[1] : undefined;
+      }
     }
     if (price == null) return null;
 
@@ -289,7 +298,7 @@ export class OzonAdapter implements MarketplaceAdapter {
         if (m) rating = Number(m[1].replace(',', '.'));
       }
       if (reviewsCount == null) {
-        const m = s.val.match(/(\d[\d\s ]*)\s*(отзыв|оцен)/i);
+        const m = s.val.match(/(\d[\d\s]*)\s*(отзыв|оцен)/i);
         if (m) reviewsCount = Number(m[1].replace(/\D/g, ''));
       }
     }
@@ -311,6 +320,7 @@ export class OzonAdapter implements MarketplaceAdapter {
       marketplace: 'ozon',
       title,
       price,
+      priceWithCard: priceWithCard != null && priceWithCard < price ? priceWithCard : undefined,
       oldPrice,
       discountPercent,
       rating,
@@ -336,7 +346,7 @@ export class OzonAdapter implements MarketplaceAdapter {
         const title = (img?.alt || a.textContent || '').trim();
         if (!title) continue;
         const text = (card.textContent || '').replace(/\s+/g, ' ');
-        const prices = text.match(/\d[\d\s ]*₽/g) || [];
+        const prices = text.match(/\d[\d\s]*₽/g) || [];
         if (prices.length === 0) continue;
         seen.add(href);
         out.push({ href, title, price: prices[0] ?? '', oldPrice: prices[1] || '', image: img?.src || '' });

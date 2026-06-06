@@ -20,12 +20,54 @@ export interface DomScrapeOptions {
   idRegex?: string;
 }
 
-interface RawCard {
+export interface RawCard {
   href: string;
   title: string;
   price: string;
   oldPrice: string;
   image: string;
+}
+
+/** Парсит число из строки цены (удаляет всё нецифровое). */
+function parsePriceText(t: string): number | undefined {
+  const n = Number((t || '').replace(/[^\d]/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/**
+ * Чистое преобразование «сырых» карточек DOM в офферы (id, цены, скидка, картинка).
+ * Вынесено из браузерного кода — покрыто юнит-тестами.
+ */
+export function mapRawCards(
+  raw: RawCard[],
+  opts: DomScrapeOptions,
+  collectedAt: string,
+): MarketplaceOffer[] {
+  const idRe = opts.idRegex ? new RegExp(opts.idRegex, 'i') : null;
+  return raw
+    .map((r): MarketplaceOffer | null => {
+      const price = parsePriceText(r.price);
+      if (price == null) return null;
+      let oldPrice = parsePriceText(r.oldPrice);
+      // Старая цена осмысленна только если она больше текущей.
+      if (oldPrice != null && oldPrice <= price) oldPrice = undefined;
+      const idMatch = idRe ? r.href.match(idRe) : null;
+      const id = idMatch ? idMatch[1] : r.href;
+      return {
+        id: `${opts.marketplace}:${id}`,
+        marketplace: opts.marketplace,
+        title: r.title,
+        price,
+        oldPrice,
+        discountPercent:
+          oldPrice && oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : undefined,
+        imageUrl: r.image || undefined,
+        productUrl: r.href,
+        availability: true,
+        collectedAt,
+      };
+    })
+    .filter((o): o is MarketplaceOffer => o !== null);
 }
 
 export async function extractProductsFromDom(
@@ -93,34 +135,5 @@ export async function extractProductsFromDom(
     return out;
   }, opts);
 
-  const parsePrice = (t: string): number | undefined => {
-    const n = Number((t || '').replace(/[^\d]/g, ''));
-    return Number.isFinite(n) && n > 0 ? n : undefined;
-  };
-  const idRe = opts.idRegex ? new RegExp(opts.idRegex, 'i') : null;
-
-  return raw
-    .map((r): MarketplaceOffer | null => {
-      const price = parsePrice(r.price);
-      if (price == null) return null;
-      let oldPrice = parsePrice(r.oldPrice);
-      // Старая цена осмысленна только если она больше текущей.
-      if (oldPrice != null && oldPrice <= price) oldPrice = undefined;
-      const idMatch = idRe ? r.href.match(idRe) : null;
-      const id = idMatch ? idMatch[1] : r.href;
-      return {
-        id: `${opts.marketplace}:${id}`,
-        marketplace: opts.marketplace,
-        title: r.title,
-        price,
-        oldPrice,
-        discountPercent:
-          oldPrice && oldPrice > price ? Math.round(((oldPrice - price) / oldPrice) * 100) : undefined,
-        imageUrl: r.image || undefined,
-        productUrl: r.href,
-        availability: true,
-        collectedAt,
-      };
-    })
-    .filter((o): o is MarketplaceOffer => o !== null);
+  return mapRawCards(raw, opts, collectedAt);
 }

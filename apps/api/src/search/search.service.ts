@@ -83,6 +83,7 @@ export class SearchService {
         marketplace: o.marketplace,
         title: o.title,
         price: o.price,
+        priceWithCard: o.priceWithCard ?? undefined,
         oldPrice: o.oldPrice ?? undefined,
         discountPercent: o.discountPercent ?? undefined,
         rating: o.rating ?? undefined,

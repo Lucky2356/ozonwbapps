@@ -55,6 +55,7 @@ model Offer {
   externalId      String
   title           String
   price           Float
+  priceWithCard   Float?
   oldPrice        Float?
   discountPercent Float?
   rating          Float?

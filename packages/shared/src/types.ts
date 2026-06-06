@@ -19,8 +19,10 @@ export interface MarketplaceOffer {
   id: string;
   marketplace: MarketplaceId;
   title: string;
-  /** Текущая цена в рублях. */
+  /** Текущая цена в рублях (обычная — как на странице товара). */
   price: number;
+  /** Цена со спец-условием оплаты (Ozon Карта / WB-кошелёк), если ниже обычной. */
+  priceWithCard?: number;
   /** Старая (зачёркнутая) цена в рублях. */
   oldPrice?: number;
   /** Процент скидки 0..100. */

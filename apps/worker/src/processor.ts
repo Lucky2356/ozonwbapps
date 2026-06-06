@@ -114,6 +114,7 @@ export async function processSearch(searchId: string): Promise<void> {
           externalId: o.id.split(':').slice(1).join(':') || o.id,
           title: o.title,
           price: o.price,
+          priceWithCard: o.priceWithCard,
           oldPrice: o.oldPrice,
           discountPercent: o.discountPercent,
           rating: o.rating,

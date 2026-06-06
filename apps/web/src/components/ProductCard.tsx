@@ -66,6 +66,11 @@ export function ProductCard({ item, isFavorite, bestPrice, onToggleFavorite, onT
             </span>
           ) : null}
         </div>
+        {item.priceWithCard != null && (
+          <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            {formatPrice(item.priceWithCard)} с картой
+          </div>
+        )}
 
         <div className="flex items-center gap-3 text-xs text-slate-500">
           {item.rating != null && (

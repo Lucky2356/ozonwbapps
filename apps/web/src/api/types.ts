@@ -7,6 +7,7 @@ export interface ResultItem {
   marketplace: string;
   title: string;
   price: number;
+  priceWithCard?: number;
   oldPrice?: number;
   discountPercent?: number;
   rating?: number;
