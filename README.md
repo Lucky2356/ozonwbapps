@@ -111,9 +111,9 @@ npm run dev:web      # http://localhost:5173 — открыть в браузе�
 скрипт сохранит отрисованный HTML и скриншот в папку `diag/` и напечатает счётчики ссылок:
 
 ```bash
-node scripts/diag.mjs dns "наушники"
-node scripts/diag.mjs yandex_market "кофеварка"
-# Маркетплейсы: ozon | wildberries | yandex_market | dns | mvideo | citilink | megamarket
+node scripts/diag.mjs ozon "наушники"
+node scripts/diag.mjs citilink "кофеварка"
+# Маркетплейсы: ozon | wildberries | citilink | megamarket
 ```
 
 Для разбора цен Wildberries (расхождение цены в выдаче и на странице товара — обычно это
@@ -223,18 +223,19 @@ POST   /api/profile/telegram/link-code
 5. (Опционально) реализуйте `fetchProductPrice(productUrl)` — тогда товар участвует
    в отслеживании цен и уведомлениях.
 
-Остальной код (API, очередь, scoring, фронтенд) менять не нужно. Так уже добавлены
-**Яндекс.Маркет** (`yandex_market`), **DNS** (`dns`), **М.Видео** (`mvideo`),
+Остальной код (API, очередь, scoring, фронтенд) менять не нужно. Так добавлены
 **Ситилинк** (`citilink`) и **Мегамаркет** (`megamarket`) — включаются через
-`ENABLED_MARKETPLACES` (по умолчанию выключены из-за анти-бот-защиты; надёжнее на «чистом»
-RU-IP, см. `YM_HEADLESS` / `DNS_HEADLESS` / `MV_HEADLESS` / `CL_HEADLESS` / `MM_HEADLESS`).
+`ENABLED_MARKETPLACES` (надёжнее на «чистом» RU-IP, см. `CL_HEADLESS` / `MM_HEADLESS`).
+
+> Ранее были адаптеры Яндекс.Маркет, DNS и М.Видео — удалены, т.к. их анти-бот-защита
+> (SmartCaptcha / DDoS-Guard) не отдавала каталог даже видимому браузеру. При необходимости
+> их можно восстановить из истории git.
 
 ## Что готово (MVP)
 
 - Регистрация/вход (JWT), защищённые маршруты.
 - Поиск с выбором маркетплейсов и фильтрами (рейтинг, отзывы, цена), сортировки.
-- Реальные данные Wildberries; Ozon, Яндекс.Маркет, DNS, М.Видео, Ситилинк и Мегамаркет
-  best-effort через Playwright.
+- Реальные данные Wildberries; Ozon, Ситилинк и Мегамаркет best-effort через Playwright.
 - Scoring выгодности с объяснениями, топ-предложения.
 - Сравнение цен между маркетплейсами: одинаковые товары группируются, видно где дешевле
   и сколько можно сэкономить (режим «Сравнить цены» на результатах и в избранном).

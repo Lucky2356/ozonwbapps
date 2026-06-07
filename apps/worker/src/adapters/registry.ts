@@ -1,9 +1,6 @@
 import { MarketplaceAdapter } from './types';
 import { WildberriesAdapter } from './wildberries';
 import { OzonAdapter } from './ozon';
-import { YandexMarketAdapter } from './yandexmarket';
-import { DnsAdapter } from './dns';
-import { MVideoAdapter } from './mvideo';
 import { CitilinkAdapter } from './citilink';
 import { MegamarketAdapter } from './megamarket';
 import { config } from '../config';
@@ -15,9 +12,6 @@ import { config } from '../config';
 const ALL: MarketplaceAdapter[] = [
   new WildberriesAdapter(),
   new OzonAdapter(),
-  new YandexMarketAdapter(),
-  new DnsAdapter(),
-  new MVideoAdapter(),
   new CitilinkAdapter(),
   new MegamarketAdapter(),
 ];

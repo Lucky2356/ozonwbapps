@@ -2,9 +2,9 @@
 /**
  * Диагностика парсинга страницы поиска любого маркетплейса.
  * Запуск (нужен RU-IP и установленный Playwright):
- *   node scripts/diag.mjs dns "наушники"
- *   node scripts/diag.mjs yandex_market "кофеварка"
- * Маркетплейсы: ozon | wildberries | yandex_market | dns | mvideo | citilink | megamarket
+ *   node scripts/diag.mjs ozon "наушники"
+ *   node scripts/diag.mjs citilink "кофеварка"
+ * Маркетплейсы: ozon | wildberries | citilink | megamarket
  *
  * Что делает: открывает обычный (не headless) браузер, ждёт прогрузки, скроллит,
  * сохраняет в папку diag/ отрисованный HTML и скриншот, печатает счётчики ссылок на
@@ -16,9 +16,6 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 const URLS = {
   ozon: (q) => `https://www.ozon.ru/search/?text=${encodeURIComponent(q)}`,
   wildberries: (q) => `https://www.wildberries.ru/catalog/0/search.aspx?search=${encodeURIComponent(q)}`,
-  yandex_market: (q) => `https://market.yandex.ru/search?text=${encodeURIComponent(q)}`,
-  dns: (q) => `https://www.dns-shop.ru/search/?q=${encodeURIComponent(q)}`,
-  mvideo: (q) => `https://www.mvideo.ru/product-list-page?q=${encodeURIComponent(q)}`,
   citilink: (q) => `https://www.citilink.ru/search/?text=${encodeURIComponent(q)}`,
   megamarket: (q) => `https://megamarket.ru/search/?q=${encodeURIComponent(q)}`,
 };
@@ -31,7 +28,7 @@ const query = process.argv.slice(3).join(' ').trim() || 'наушники';
 
 if (!URLS[mp]) {
   console.log('Укажите маркетплейс:', Object.keys(URLS).join(' | '));
-  console.log('Пример: node scripts/diag.mjs dns "наушники"');
+  console.log('Пример: node scripts/diag.mjs ozon "наушники"');
   process.exit(1);
 }
 

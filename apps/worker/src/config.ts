@@ -61,22 +61,6 @@ export const config = {
     headless: process.env.OZON_HEADLESS === '1',
     timeoutMs: Number(process.env.OZON_TIMEOUT_MS ?? 30000),
   },
-  yandex: {
-    // Яндекс.Маркет детектит headless (чаще показывает капчу). По умолчанию headed;
-    // headless можно форсировать YM_HEADLESS=1.
-    headless: process.env.YM_HEADLESS === '1',
-    timeoutMs: Number(process.env.YM_TIMEOUT_MS ?? 30000),
-  },
-  dns: {
-    // DNS (DDoS-Guard) детектит headless. По умолчанию headed; форс headless — DNS_HEADLESS=1.
-    headless: process.env.DNS_HEADLESS === '1',
-    timeoutMs: Number(process.env.DNS_TIMEOUT_MS ?? 30000),
-  },
-  mvideo: {
-    // М.Видео детектит headless. По умолчанию headed; форс headless — MV_HEADLESS=1.
-    headless: process.env.MV_HEADLESS === '1',
-    timeoutMs: Number(process.env.MV_TIMEOUT_MS ?? 30000),
-  },
   citilink: {
     // Ситилинк: headless по умолчанию; на «чистом» RU-IP надёжнее headed (CL_HEADLESS=0).
     headless: process.env.CL_HEADLESS !== '0',

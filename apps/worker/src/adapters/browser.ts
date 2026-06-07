@@ -39,37 +39,17 @@ export const REALISTIC_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 /**
- * Блокирует загрузку тяжёлых ресурсов (картинки, медиа, шрифты) — ускоряет парсинг в разы
- * и экономит трафик. CSS и fetch/xhr НЕ трогаем: на XHR/fetch держится перехват JSON
- * (Ozon/WB/ЯМ), а CSS нужен для корректного рендера/детекта карточек. URL картинок берём
- * из data-/src-атрибутов DOM — их блокировка запроса не убирает.
- */
-async function applyResourceBlocking(context: BrowserContext): Promise<void> {
-  await context.route('**/*', (route) => {
-    const type = route.request().resourceType();
-    if (type === 'image' || type === 'media' || type === 'font') return route.abort();
-    return route.continue();
-  });
-}
-
-/**
  * Создаёт контекст браузера со стандартными параметрами парсера (ru-RU, реалистичный UA,
  * 1366×900). Единая точка для всех адаптеров.
  *
- * blockResources: блокировать ли тяжёлые ресурсы (ускоряет, но перехват всех запросов и
- * отсутствие картинок ломает гидрацию/триггерит анти-бот у некоторых SPA — напр. Ozon).
- * Поэтому для «капризных» маркетплейсов передаём false.
+ * Блокировку ресурсов (картинки/шрифты) сознательно НЕ делаем: перехват запросов ломал
+ * гидрацию SPA (Ozon переставал отдавать товары) и «съедал» картинки в выдаче.
  */
-export async function createParserContext(
-  headless = true,
-  blockResources = true,
-): Promise<BrowserContext> {
+export async function createParserContext(headless = true): Promise<BrowserContext> {
   const browser = await getBrowser(headless);
-  const context = await browser.newContext({
+  return browser.newContext({
     locale: 'ru-RU',
     viewport: { width: 1366, height: 900 },
     userAgent: REALISTIC_UA,
   });
-  if (blockResources) await applyResourceBlocking(context);
-  return context;
 }

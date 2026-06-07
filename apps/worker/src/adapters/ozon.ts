@@ -28,7 +28,7 @@ export class OzonAdapter implements MarketplaceAdapter {
     const composerBodies: string[] = [];
     let context;
     try {
-      context = await createParserContext(config.ozon.headless, false);
+      context = await createParserContext(config.ozon.headless);
       const page = await context.newPage();
 
       // Собираем JSON-ответы Ozon с результатами поиска.
@@ -80,7 +80,7 @@ export class OzonAdapter implements MarketplaceAdapter {
     if (!config.ozon.enabled) return null;
     let context;
     try {
-      context = await createParserContext(config.ozon.headless, false);
+      context = await createParserContext(config.ozon.headless);
       const page = await context.newPage();
       await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.ozon.timeoutMs });
       await page.waitForSelector('[data-widget="webPrice"]', { timeout: 12000 }).catch(() => undefined);

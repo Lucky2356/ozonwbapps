@@ -6,9 +6,6 @@
 export type MarketplaceId =
   | 'ozon'
   | 'wildberries'
-  | 'yandex_market'
-  | 'dns'
-  | 'mvideo'
   | 'citilink'
   | 'megamarket'
   | (string & {});
