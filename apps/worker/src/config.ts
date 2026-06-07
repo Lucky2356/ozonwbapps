@@ -56,24 +56,25 @@ export const config = {
   },
   ozon: {
     enabled: (process.env.OZON_ENABLED ?? 'true') === 'true',
+    // Ozon детектит headless и блокирует выдачу. По умолчанию headed (как WB); на сервере
+    // без дисплея — xvfb-run, либо OZON_HEADLESS=1 (тогда Ozon, скорее всего, вернёт пусто).
+    headless: process.env.OZON_HEADLESS === '1',
     timeoutMs: Number(process.env.OZON_TIMEOUT_MS ?? 30000),
   },
   yandex: {
-    // У Яндекс.Маркета сильная капча; в headless она срабатывает чаще. По умолчанию headless,
-    // на «чистом» RU-IP можно перевести в headed (YM_HEADLESS=0) для большей надёжности.
-    headless: process.env.YM_HEADLESS !== '0',
+    // Яндекс.Маркет детектит headless (чаще показывает капчу). По умолчанию headed;
+    // headless можно форсировать YM_HEADLESS=1.
+    headless: process.env.YM_HEADLESS === '1',
     timeoutMs: Number(process.env.YM_TIMEOUT_MS ?? 30000),
   },
   dns: {
-    // У DNS сильная анти-бот-защита (DDoS-Guard). По умолчанию headless; на «чистом» RU-IP
-    // надёжнее headed (DNS_HEADLESS=0).
-    headless: process.env.DNS_HEADLESS !== '0',
+    // DNS (DDoS-Guard) детектит headless. По умолчанию headed; форс headless — DNS_HEADLESS=1.
+    headless: process.env.DNS_HEADLESS === '1',
     timeoutMs: Number(process.env.DNS_TIMEOUT_MS ?? 30000),
   },
   mvideo: {
-    // У М.Видео анти-бот-защита/капча. По умолчанию headless; на «чистом» RU-IP
-    // надёжнее headed (MV_HEADLESS=0).
-    headless: process.env.MV_HEADLESS !== '0',
+    // М.Видео детектит headless. По умолчанию headed; форс headless — MV_HEADLESS=1.
+    headless: process.env.MV_HEADLESS === '1',
     timeoutMs: Number(process.env.MV_TIMEOUT_MS ?? 30000),
   },
   citilink: {

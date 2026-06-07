@@ -6,6 +6,7 @@ import {
   SortOption,
   computeScores,
   loadWeightsFromEnv,
+  tokenizeTitle,
 } from '@ozonwb/shared';
 import { resolveAdapters } from './adapters/registry';
 import { dedupe, applyFilters } from './adapters/base';
@@ -77,6 +78,22 @@ function refreshInBackground(adapter: MarketplaceAdapter, marketplace: string, p
   })();
 }
 
+/**
+ * Отсеивает нерелевантные товары: оставляет те, чьё название содержит хотя бы один значимый
+ * токен запроса. Убирает «левые» товары из рекомендаций/каруселей (особенно при DOM-парсинге),
+ * напр. на запрос «samsung s25» отбрасывает платья и случайные товары. Если у запроса нет
+ * значимых токенов — фильтр не применяется.
+ */
+function filterByQuery(offers: MarketplaceOffer[], query: string): MarketplaceOffer[] {
+  const qTokens = tokenizeTitle(query);
+  if (qTokens.length === 0) return offers;
+  const qSet = new Set(qTokens);
+  return offers.filter((o) => {
+    const titleTokens = tokenizeTitle(o.title);
+    return titleTokens.some((t) => qSet.has(t));
+  });
+}
+
 /** Основная обработка поисковой задачи. */
 export async function processSearch(searchId: string): Promise<void> {
   const search = await prisma.search.findUnique({ where: { id: searchId } });
@@ -102,8 +119,16 @@ export async function processSearch(searchId: string): Promise<void> {
     const collected = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
 
     const unique = dedupe(collected);
+    const relevant = filterByQuery(unique, search.query);
+    if (relevant.length < unique.length) {
+      logger.info('Отсеяны нерелевантные товары', {
+        query: search.query,
+        before: unique.length,
+        after: relevant.length,
+      });
+    }
     const weights = loadWeightsFromEnv(config.scoreWeights as Record<string, string | undefined>);
-    const scored = computeScores(unique, weights);
+    const scored = computeScores(relevant, weights);
 
     // Сохраняем результаты.
     if (scored.length > 0) {
