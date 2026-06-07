@@ -54,15 +54,22 @@ async function applyResourceBlocking(context: BrowserContext): Promise<void> {
 
 /**
  * Создаёт контекст браузера со стандартными параметрами парсера (ru-RU, реалистичный UA,
- * 1366×900) и блокировкой тяжёлых ресурсов. Единая точка для всех адаптеров.
+ * 1366×900). Единая точка для всех адаптеров.
+ *
+ * blockResources: блокировать ли тяжёлые ресурсы (ускоряет, но перехват всех запросов и
+ * отсутствие картинок ломает гидрацию/триггерит анти-бот у некоторых SPA — напр. Ozon).
+ * Поэтому для «капризных» маркетплейсов передаём false.
  */
-export async function createParserContext(headless = true): Promise<BrowserContext> {
+export async function createParserContext(
+  headless = true,
+  blockResources = true,
+): Promise<BrowserContext> {
   const browser = await getBrowser(headless);
   const context = await browser.newContext({
     locale: 'ru-RU',
     viewport: { width: 1366, height: 900 },
     userAgent: REALISTIC_UA,
   });
-  await applyResourceBlocking(context);
+  if (blockResources) await applyResourceBlocking(context);
   return context;
 }

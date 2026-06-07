@@ -24,7 +24,7 @@ export class DnsAdapter implements MarketplaceAdapter {
     const url = `https://www.dns-shop.ru/search/?q=${encodeURIComponent(params.query)}`;
     let context;
     try {
-      context = await createParserContext(config.dns.headless);
+      context = await createParserContext(config.dns.headless, false);
       const page = await context.newPage();
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: config.dns.timeoutMs });
 
@@ -72,7 +72,7 @@ export class DnsAdapter implements MarketplaceAdapter {
   async fetchProductPrice(productUrl: string): Promise<number | null> {
     let context;
     try {
-      context = await createParserContext(config.dns.headless);
+      context = await createParserContext(config.dns.headless, false);
       const page = await context.newPage();
       await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.dns.timeoutMs });
       await page

@@ -26,7 +26,7 @@ export class YandexMarketAdapter implements MarketplaceAdapter {
     const jsonBodies: string[] = [];
     let context;
     try {
-      context = await createParserContext(config.yandex.headless);
+      context = await createParserContext(config.yandex.headless, false);
       const page = await context.newPage();
 
       // Перехватываем JSON-ответы с товарами (структура страницы поиска ЯМ).
@@ -95,7 +95,7 @@ export class YandexMarketAdapter implements MarketplaceAdapter {
   async fetchProductPrice(productUrl: string): Promise<number | null> {
     let context;
     try {
-      context = await createParserContext(config.yandex.headless);
+      context = await createParserContext(config.yandex.headless, false);
       const page = await context.newPage();
       await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.yandex.timeoutMs });
       await page

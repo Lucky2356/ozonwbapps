@@ -24,7 +24,7 @@ export class MVideoAdapter implements MarketplaceAdapter {
     const url = `https://www.mvideo.ru/product-list-page?q=${encodeURIComponent(params.query)}`;
     let context;
     try {
-      context = await createParserContext(config.mvideo.headless);
+      context = await createParserContext(config.mvideo.headless, false);
       const page = await context.newPage();
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: config.mvideo.timeoutMs });
 
@@ -75,7 +75,7 @@ export class MVideoAdapter implements MarketplaceAdapter {
   async fetchProductPrice(productUrl: string): Promise<number | null> {
     let context;
     try {
-      context = await createParserContext(config.mvideo.headless);
+      context = await createParserContext(config.mvideo.headless, false);
       const page = await context.newPage();
       await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: config.mvideo.timeoutMs });
       await page
