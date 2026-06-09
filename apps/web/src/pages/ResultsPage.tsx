@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Info, LayoutGrid, Scale, Download, X, Heart, Bell } from 'lucide-react';
+import { ArrowLeft, Info, LayoutGrid, Scale, Download, X, Heart, Bell, SlidersHorizontal } from 'lucide-react';
 import clsx from 'clsx';
+import { isAccessoryQuery } from '@ozonwb/shared';
 import {
   useSearchStatus,
   useSearchResults,
@@ -12,6 +13,7 @@ import {
 } from '../api/hooks';
 import { ProductCard } from '../components/ProductCard';
 import { PriceComparison } from '../components/PriceComparison';
+import { FacetSidebar } from '../components/FacetSidebar';
 import { TrackDialog } from '../components/TrackDialog';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
 import { SkeletonGrid } from '../components/SkeletonCard';
@@ -19,8 +21,28 @@ import { ScoreLegend } from '../components/ScoreLegend';
 import { marketplaceColor, marketplaceLabel } from '../lib/format';
 import { SORT_OPTIONS, sortResults } from '../lib/sort';
 import { downloadCsv, resultsToCsv, safeFileName } from '../lib/export';
+import {
+  buildFacets,
+  applyFacets,
+  hasActiveFilters,
+  EMPTY_SELECTION,
+  type FacetSelection,
+} from '../lib/facets';
 import { toast } from '../store/toast';
 import type { ResultItem, SortOption } from '../api/types';
+
+function countActive(s: FacetSelection): number {
+  return (
+    s.brands.length +
+    s.categories.length +
+    s.marketplaces.length +
+    (s.minPrice != null ? 1 : 0) +
+    (s.maxPrice != null ? 1 : 0) +
+    (s.minRating != null ? 1 : 0) +
+    (s.onlyDiscount ? 1 : 0) +
+    (s.excludeAccessories ? 1 : 0)
+  );
+}
 
 export function ResultsPage() {
   const { searchId } = useParams<{ searchId: string }>();
@@ -38,16 +60,20 @@ export function ResultsPage() {
   const [view, setView] = useState<'list' | 'compare'>('list');
   const [filterText, setFilterText] = useState('');
   const [visibleCount, setVisibleCount] = useState(24);
+  const [selection, setSelection] = useState<FacetSelection>(EMPTY_SELECTION);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [trackItem, setTrackItem] = useState<ResultItem | null>(null);
 
-  // Сбрасываем пагинацию при смене фильтра/сортировки.
-  useEffect(() => setVisibleCount(24), [filterText, sort]);
+  const query = status.data?.query ?? '';
+
+  // Сбрасываем пагинацию при смене фильтра/сортировки/фасетов.
+  useEffect(() => setVisibleCount(24), [filterText, sort, selection]);
 
   const favByUrl = new Map((favorites.data ?? []).map((f) => [f.productUrl, f.id]));
 
   const allItems = results.data?.results ?? [];
   // Быстрый клиентский фильтр по словам из названия (все слова должны встретиться).
-  const items = useMemo(() => {
+  const textFiltered = useMemo(() => {
     const q = filterText.trim().toLowerCase();
     if (!q) return allItems;
     const terms = q.split(/\s+/);
@@ -56,11 +82,23 @@ export function ResultsPage() {
       return terms.every((t) => title.includes(t));
     });
   }, [allItems, filterText]);
+  // Фасеты считаем из набора после текстового фильтра.
+  const facets = useMemo(() => buildFacets(textFiltered), [textFiltered]);
+  // Применяем выбранные фильтры.
+  const items = useMemo(
+    () => applyFacets(textFiltered, selection, query),
+    [textFiltered, selection, query],
+  );
   const sortedItems = useMemo(() => sortResults(items, sort), [items, sort]);
   const minPrice = useMemo(
     () => (items.length ? Math.min(...items.map((i) => i.price)) : 0),
     [items],
   );
+
+  const patchSelection = (patch: Partial<FacetSelection>) => setSelection((s) => ({ ...s, ...patch }));
+  const resetSelection = () => setSelection(EMPTY_SELECTION);
+  const accessoryQuery = isAccessoryQuery(query);
+  const activeCount = countActive(selection);
 
   const toggleFavorite = (item: ResultItem) => {
     const existingId = favByUrl.get(item.productUrl);
@@ -230,6 +268,18 @@ export function ResultsPage() {
           >
             <Download className="h-4 w-4" /> Скачать CSV
           </button>
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-brand lg:hidden"
+            aria-label="Открыть фильтры"
+          >
+            <SlidersHorizontal className="h-4 w-4" /> Фильтры
+            {activeCount > 0 && (
+              <span className="ml-0.5 rounded-full bg-brand px-1.5 text-[10px] font-bold text-white">
+                {activeCount}
+              </span>
+            )}
+          </button>
         </div>
         {view === 'list' && (
           <label className="flex items-center gap-2 text-sm text-slate-500">
@@ -279,59 +329,100 @@ export function ResultsPage() {
         </div>
       )}
 
-      {items.length === 0 ? (
-        <EmptyState text="Под фильтр ничего не подошло. Измените или очистите фильтр." />
-      ) : view === 'compare' ? (
-        <PriceComparison
-          items={items}
-          renderActions={(item) => (
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        {/* Фильтры — сайдбар на десктопе */}
+        <aside className="hidden w-64 shrink-0 lg:block">
+          <FacetSidebar
+            facets={facets}
+            selection={selection}
+            onChange={patchSelection}
+            onReset={resetSelection}
+            accessoryQuery={accessoryQuery}
+          />
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          {items.length === 0 ? (
+            <EmptyState
+              text={
+                hasActiveFilters(selection)
+                  ? 'Под выбранные фильтры ничего не подошло. Ослабьте или сбросьте фильтры.'
+                  : 'Под фильтр ничего не подошло. Измените или очистите фильтр.'
+              }
+            />
+          ) : view === 'compare' ? (
+            <PriceComparison
+              items={items}
+              renderActions={(item) => (
+                <>
+                  <button
+                    onClick={() => toggleFavorite(item)}
+                    className="btn-ghost px-2"
+                    title={favByUrl.has(item.productUrl) ? 'Убрать из избранного' : 'В избранное'}
+                    aria-label={favByUrl.has(item.productUrl) ? 'Убрать из избранного' : 'Добавить в избранное'}
+                  >
+                    <Heart
+                      className={clsx(
+                        'h-4 w-4',
+                        favByUrl.has(item.productUrl) && 'fill-rose-500 text-rose-500',
+                      )}
+                    />
+                  </button>
+                  <button
+                    onClick={() => setTrackItem(item)}
+                    className="btn-ghost px-2"
+                    title="Отслеживать цену"
+                    aria-label="Отслеживать цену товара"
+                  >
+                    <Bell className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+            />
+          ) : (
             <>
-              <button
-                onClick={() => toggleFavorite(item)}
-                className="btn-ghost px-2"
-                title={favByUrl.has(item.productUrl) ? 'Убрать из избранного' : 'В избранное'}
-                aria-label={favByUrl.has(item.productUrl) ? 'Убрать из избранного' : 'Добавить в избранное'}
-              >
-                <Heart
-                  className={clsx(
-                    'h-4 w-4',
-                    favByUrl.has(item.productUrl) && 'fill-rose-500 text-rose-500',
-                  )}
-                />
-              </button>
-              <button
-                onClick={() => setTrackItem(item)}
-                className="btn-ghost px-2"
-                title="Отслеживать цену"
-                aria-label="Отслеживать цену товара"
-              >
-                <Bell className="h-4 w-4" />
-              </button>
+              <p className="mb-3 text-sm text-slate-500">Показываем {items.length} товаров</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                {sortedItems.slice(0, visibleCount).map((item) => (
+                  <ProductCard
+                    key={item.id}
+                    item={item}
+                    isFavorite={favByUrl.has(item.productUrl)}
+                    bestPrice={item.price === minPrice}
+                    onToggleFavorite={toggleFavorite}
+                    onTrack={(it) => setTrackItem(it)}
+                  />
+                ))}
+              </div>
+              {sortedItems.length > visibleCount && (
+                <div className="mt-5 text-center">
+                  <button onClick={() => setVisibleCount((n) => n + 24)} className="btn-outline">
+                    Показать ещё ({sortedItems.length - visibleCount})
+                  </button>
+                </div>
+              )}
             </>
           )}
-        />
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {sortedItems.slice(0, visibleCount).map((item) => (
-              <ProductCard
-                key={item.id}
-                item={item}
-                isFavorite={favByUrl.has(item.productUrl)}
-                bestPrice={item.price === minPrice}
-                onToggleFavorite={toggleFavorite}
-                onTrack={(it) => setTrackItem(it)}
-              />
-            ))}
+        </div>
+      </div>
+
+      {/* Фильтры — выезжающая панель на мобильных */}
+      {filtersOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setFiltersOpen(false)} />
+          <div className="absolute inset-y-0 left-0 flex w-80 max-w-[88%] flex-col overflow-y-auto bg-slate-50 p-3 dark:bg-slate-950">
+            <FacetSidebar
+              facets={facets}
+              selection={selection}
+              onChange={patchSelection}
+              onReset={resetSelection}
+              accessoryQuery={accessoryQuery}
+            />
+            <button onClick={() => setFiltersOpen(false)} className="btn-primary mt-3 w-full">
+              Показать {items.length} товаров
+            </button>
           </div>
-          {sortedItems.length > visibleCount && (
-            <div className="mt-5 text-center">
-              <button onClick={() => setVisibleCount((n) => n + 24)} className="btn-outline">
-                Показать ещё ({sortedItems.length - visibleCount})
-              </button>
-            </div>
-          )}
-        </>
+        </div>
       )}
 
       <TrackDialog
