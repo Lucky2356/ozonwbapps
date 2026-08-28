@@ -1,0 +1,18 @@
+{
+  "name": "ozonwbapps",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [5173, 3000],
+  "portsAttributes": {
+    "5173": { "label": "web (Vite)", "onAutoForward": "openPreview" },
+    "3000": { "label": "api (NestJS)" }
+  },
+  "postCreateCommand": "npm install && npx playwright install --with-deps chromium && cp -n .env.example .env || true",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "Prisma.prisma"]
+    }
+  }
+}

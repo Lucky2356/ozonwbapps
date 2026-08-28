@@ -43,3 +43,7 @@ diag/
 
 # Посторонние материалы (презентации и т.п.) — не часть кода
 presentation/
+
+# Артефакты Playwright MCP и локальные скриншоты
+.playwright-mcp/
+landing-hero.png
