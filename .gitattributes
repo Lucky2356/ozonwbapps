@@ -1,0 +1,4 @@
+# Скрипты и конфиги, исполняемые в Linux-контейнерах (Codespaces / VPS),
+# всегда с LF-переводами строк — иначе bash ругается "bad interpreter".
+*.sh text eol=lf
+Caddyfile text eol=lf

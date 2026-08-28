@@ -22,7 +22,7 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
-        run: npx prisma generate --schema packages/db/prisma/schema.prisma
+        run: npm run generate --workspace @ozonwb/db
 
       - name: Build
         run: npm run build
