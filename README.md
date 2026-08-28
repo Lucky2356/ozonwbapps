@@ -69,14 +69,19 @@ npm start       # БД+Redis, миграции, api+worker+web — всё сра
 
 Проект настроен на GitHub Codespaces — облачную среду разработки, которая работает на
 серверах GitHub и **не нагружает ваш компьютер**. На странице репозитория: кнопка
-**Code → Codespaces → Create codespace on main**. Среда сама поставит Node, Docker и
-зависимости (см. `.devcontainer/devcontainer.json`). Дальше в терминале Codespaces:
+**Code → Codespaces → Create codespace on main**. Среда сама поставит Node, Docker,
+зависимости, браузер Playwright и `xvfb` (см. `.devcontainer/devcontainer.json` и
+`.devcontainer/post-create.sh`). Дальше в терминале Codespaces:
 
 ```bash
-npm start
+npm start                 # обычный запуск (сам поднимет Postgres/Redis)
+xvfb-run -a npm start     # если нужен headed-парсинг WB/Ozon (виртуальный дисплей)
 ```
 
 Порт веб-приложения (5173) пробрасывается автоматически — откроется превью в браузере.
+
+> Секреты в Codespaces задавайте через **Settings → Secrets and variables → Codespaces**
+> в репозитории (они попадут в среду как переменные окружения) — не коммитьте `.env` в git.
 
 > **Важно про парсинг из облака.** Маркетплейсы (WB/Ozon/Ситилинк/Мегамаркет) отдают
 > каталог только с **российского IP** и «видимому» (не-headless) браузеру. Дата-центр
@@ -84,6 +89,42 @@ npm start
 > (сработает анти-бот). Codespaces отлично подходит для разработки, сборки, тестов и показа
 > интерфейса, но реальный сбор цен нужно запускать на машине с RU-IP (локально или на RU-VPS
 > с `xvfb`). Само приложение, БД и очередь в Codespaces поднимаются полностью.
+
+## Деплой на сервер (VPS)
+
+Чтобы сайт работал в интернете **без вашего компьютера**. Приложение полностью
+контейнеризовано; продакшн-конфиг `docker-compose.prod.yml` наружу выставляет только
+реверс-прокси **Caddy** (авто-HTTPS, Let's Encrypt), а БД/Redis/API/worker/web держит во
+внутренней сети. Воркер-парсеры запускаются под `xvfb` (headed-браузеры) прямо в контейнере.
+
+> Для **рабочего парсинга** WB/Ozon сервер должен иметь **российский IP** (иначе анти-бот
+> вернёт пусто — как в Codespaces). Само приложение и БД работают на любом хостинге.
+
+Разовая настройка на сервере (нужен Docker + compose-plugin):
+
+```bash
+# 1. Склонировать репозиторий и перейти в него
+git clone https://github.com/Lucky2356/ozonwbapps.git /opt/ozonwbapps
+cd /opt/ozonwbapps
+
+# 2. Заполнить .env (секреты!) и добавить домен
+cp .env.example .env
+#   в .env задайте: DOMAIN=ваш-домен.ru  (A-запись домена -> IP сервера)
+#                   ACME_EMAIL=you@mail.ru  (для Let's Encrypt, необязательно)
+#                   JWT_SECRET=<длинная случайная строка>  (openssl rand -base64 48)
+#                   CORS_ORIGIN=https://ваш-домен.ru
+#   и остальные секреты (TELEGRAM_BOT_TOKEN и т.д.)
+
+# 3. Собрать и запустить
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Готово: `https://ваш-домен.ru` — сайт, `https://ваш-домен.ru/api/...` — API (Caddy получит
+сертификат автоматически). Миграции применяются при старте контейнера `api`.
+
+Обновление вручную: `git pull && docker compose -f docker-compose.prod.yml up -d --build`.
+Можно автоматизировать — см. workflow `.github/workflows/deploy.yml` (запускается вручную
+через **Actions → Deploy**, деплоит по SSH; требует секретов `SSH_HOST/SSH_USER/SSH_KEY/DEPLOY_PATH`).
 
 ## Локальная разработка по шагам (без сборки Docker-образов)
 

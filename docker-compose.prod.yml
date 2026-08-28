@@ -1,0 +1,108 @@
+# Продакшн-конфигурация (самодостаточная — НЕ оверлей к docker-compose.yml).
+# Отличия от dev-compose:
+#   - наружу торчит только Caddy (80/443) с авто-HTTPS; БД/Redis/API/web — во внутренней сети;
+#   - фронт собирается с VITE_API_URL = https://<домен>/api;
+#   - парсеры-браузеры запускаются под xvfb (headed) внутри контейнера worker.
+#
+# Запуск на сервере (VPS):
+#   1) заполнить .env (секреты!) и переменную DOMAIN (см. ниже);
+#   2) docker compose -f docker-compose.prod.yml up -d --build
+#
+# Требуется .env с DOMAIN=example.com (ваш домен, A-запись указывает на IP сервера).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ozonwb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ozonwb_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ozonwb}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ozonwb}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ozonwb}:${POSTGRES_PASSWORD:-ozonwb_password}@postgres:5432/${POSTGRES_DB:-ozonwb}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: https://${DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    # headed-браузеры парсеров работают через виртуальный дисплей xvfb.
+    entrypoint: ['xvfb-run', '-a', '--server-args=-screen 0 1920x1080x24']
+    command: ['node', 'apps/worker/dist/index.js']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ozonwb}:${POSTGRES_PASSWORD:-ozonwb_password}@postgres:5432/${POSTGRES_DB:-ozonwb}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Фронт обращается к API по тому же домену через префикс /api (Caddy снимает префикс).
+        VITE_API_URL: https://${DOMAIN}/api
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

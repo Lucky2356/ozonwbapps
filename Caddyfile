@@ -1,0 +1,23 @@
+# Реверс-прокси с автоматическим HTTPS (Let's Encrypt).
+# Домен берётся из переменной окружения DOMAIN (задаётся в .env / docker-compose.prod.yml).
+#
+# Схема маршрутизации:
+#   https://<домен>/           -> статика фронтенда (контейнер web, nginx:80)
+#   https://<домен>/api/*      -> API (контейнер api:3000); префикс /api снимается
+#
+# Фронт при сборке получает VITE_API_URL = https://<домен>/api, поэтому все
+# запросы идут на один домен — отдельная A-запись для API не нужна.
+
+{$DOMAIN} {
+	encode gzip zstd
+
+	# API: /api/foo -> api:3000/foo (handle_path убирает префикс /api).
+	handle_path /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Всё остальное — фронтенд (SPA).
+	handle {
+		reverse_proxy web:80
+	}
+}
